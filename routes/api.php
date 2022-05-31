@@ -1,6 +1,6 @@
 <?php
 
-use Illuminate\Http\Request;
+use App\Http\Controllers\LoginController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -14,15 +14,13 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-//Route::middleware('auth:api')->post('/login', function (Request $request) {
-//    return [
-//        'message'=>'ss'
-//    ];
-//});
+$api = app('Dingo\Api\Routing\Router');
 
-Route::any('auth/login',[\App\Http\Controllers\LoginController::class,'login']);
+$api->version('v1',function ($api){
+    $api->post('','LoginController@login');
+});
 
-Route::any('login','LoginController@login');
+Route::any('auth/login',[LoginController::class,'login']);
 
 Route::get('home',function (){
     return [
@@ -30,16 +28,7 @@ Route::get('home',function (){
     ];
 });
 
-$api = app('Dingo\Api\Routing\Router');
 
-$api->version('v1',['middleware'=>['cors']],function ($api){
-    $api->post('api/login','LoginController@login');
-    $api->get('home',function (){
-        return [
-            'message'=>'sds'
-        ];
-    });
-});
 
 
 

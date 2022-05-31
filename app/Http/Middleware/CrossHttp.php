@@ -19,8 +19,8 @@ class CrossHttp
         $response = $next($request);
         $origin = $request->server('HTTP_ORIGIN') ? $request->server('HTTP_ORIGIN') : '';
         $allow_origin = [
-            'http://localhost:8000',
-            'http://localhost:8080',
+//            'http://localhost:8000',
+//            'http://localhost:8080',
         ];
         if (in_array($origin, $allow_origin)) {
             $response->header('Access-Control-Allow-Origin', $origin);

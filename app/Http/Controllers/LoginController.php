@@ -10,12 +10,12 @@ class LoginController extends Controller
 {
     public function login(Request $request): JsonResponse
     {
-//        $name = $request->all();
+        $name = $request->all();
 
         return response()->json([
             'success' => true,
             'message' => '登录成功',
-            'data' => null
+            'data' => $name
         ]);
     }
 }
