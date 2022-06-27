@@ -29,10 +29,6 @@ class LoginController extends Controller
 
         $validator = Validator::make($data, $rules, $message);
 
-        $success = true;
-        $error = '';
-        $data1 = null;
-
         if ($validator->fails()) {
             $success = false;
             $error = $validator->errors()->first();
@@ -41,16 +37,24 @@ class LoginController extends Controller
             $blogUser = BlogUser::where('username',$data['username'])->first();
             //echo $blogUser;
 
+            $str = md5(uniqid(md5(microtime(true)),true));
+            $token = sha1($str.$request['username']);
+            echo $token;
+
             if($blogUser){
                 if($blogUser['password'] == $pwd){
+                    $success = true;
                     $error = '登录成功';
                     $data1 = $blogUser;
+                    $blogUser->token = 'uuid_'.$data['username']; //设置token
                 }else{
+                    $success = false;
                     $error = '密码错误';
                     $data1 = $data;
                 }
 
             }else{
+                $success = false;
                 $error = '账号不存在';
                 $data1 = $data;
             }
