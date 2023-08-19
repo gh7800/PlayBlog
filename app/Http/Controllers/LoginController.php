@@ -7,6 +7,9 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
+/**
+ * Login 控制器
+ */
 class LoginController extends Controller
 {
     public function login(Request $request): JsonResponse
@@ -35,18 +38,16 @@ class LoginController extends Controller
             $data1 = $data;
         } else {
             $blogUser = BlogUser::where('username',$data['username'])->first();
-            //echo $blogUser;
 
             $str = md5(uniqid(md5(microtime(true)),true));
             $token = sha1($str.$request['username']);
-            echo $token;
 
             if($blogUser){
                 if($blogUser['password'] == $pwd){
                     $success = true;
                     $error = '登录成功';
                     $data1 = $blogUser;
-                    $blogUser->token = 'uuid_'.$data['username']; //设置token
+                    $blogUser->token = $token; //设置token
                 }else{
                     $success = false;
                     $error = '密码错误';

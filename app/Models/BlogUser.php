@@ -4,6 +4,9 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * M-user
+ */
 class BlogUser extends Model
 {
     protected $table = 'user';

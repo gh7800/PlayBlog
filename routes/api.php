@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\LoginController;
+use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -20,7 +21,9 @@ $api->version('v1',function ($api){
     $api->post('','LoginController@login');
 });
 
-Route::any('auth/login',[LoginController::class,'login']);
+Route::post('auth/login',[LoginController::class,'login']);
+
+Route::post('auth/user',[UserController::class,'addUser']);
 
 Route::get('home',function (){
     return [
