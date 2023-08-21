@@ -18,7 +18,7 @@ class UserController extends Controller
         $username = $data['username'];
         $password = $data['password'];
 
-        BlogUser::insert([
+        BlogUser::create([
             'username' => $username,
             'password' => $password,
             'real_name' => $username
