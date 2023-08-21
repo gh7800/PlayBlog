@@ -3,12 +3,16 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * M-user
  */
 class BlogUser extends Model
 {
+    //软删除
+    use SoftDeletes;
+
     protected $table = 'user';
 
     protected $fillable = [

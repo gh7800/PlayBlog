@@ -23,7 +23,9 @@ $api->version('v1',function ($api){
 
 Route::post('auth/login',[LoginController::class,'login']);
 
-Route::post('auth/user',[UserController::class,'addUser']);
+Route::post('user/addUser',[UserController::class,'addUser']);
+
+Route::post('user/deleteUser',[UserController::class,'deleteUser']);
 
 Route::get('home',function (){
     return [

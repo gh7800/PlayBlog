@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
  */
 class UserController extends Controller
 {
+    //添加user
     public function addUser(Request $request): \Illuminate\Http\JsonResponse
     {
         $data = $request->all();
@@ -17,19 +18,39 @@ class UserController extends Controller
         $username = $data['username'];
         $password = $data['password'];
 
-        $result = BlogUser::insert([
+        BlogUser::insert([
             'username' => $username,
-            'password' =>$password,
-            'real_name' =>$username
+            'password' => $password,
+            'real_name' => $username
         ]);
 
-        //echo $request;
-
-        return response() -> json([
+        return response()->json([
             'success' => true,
             'message' => '添加成功',
             'data' => $data
         ]);
+    }
+
+    //删除单个
+    public function deleteUser(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $username = $request['username'];
+
+        $users = BlogUser::where('username', $username);
+
+        if ($users->delete()) {
+            return response()->json([
+                'success' => true,
+                'message' => '删除成功',
+                'data' => null
+            ]);
+        } else {
+            return response()->json([
+                'success' => true,
+                'message' => '删除失败',
+                'data' => null
+            ]);
+        }
     }
 
 
