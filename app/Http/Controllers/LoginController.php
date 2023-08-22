@@ -15,7 +15,6 @@ class LoginController extends Controller
     public function login(Request $request): JsonResponse
     {
         $data = $request->all();
-        $pwd = $data['password'];
 
         $rules = [
             'username' => 'bail|required|between:4,16|alpha_num',//bail 在第一次验证失败后停止运行验证规则
@@ -43,7 +42,7 @@ class LoginController extends Controller
             $token = sha1($str.$request['username']);
 
             if($blogUser){
-                if($blogUser['password'] == $pwd){
+                if($blogUser['password'] == $data['password']){
                     $success = true;
                     $error = '登录成功';
                     $data1 = $blogUser;
