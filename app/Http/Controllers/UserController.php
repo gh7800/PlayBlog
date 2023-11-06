@@ -19,8 +19,8 @@ class UserController extends Controller
         $username = $data['username'];
         $password = $data['password'];
 
-        $user = BlogUser::where('username',$username);
-        if($user){
+        $user = BlogUser::where('username',$username)->get();
+        if(!$user->isEmpty()) {
             return response()->json([
                 'success' => false,
                 'message' => 'username已存在',
