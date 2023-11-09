@@ -9,4 +9,10 @@
 
 ## About Laravel
 
-#### 1、PHP 运行命令 php artisan serve
+#### PHP 常用命令
+```
+    1、PHP 运行命令 php artisan serve
+    2、PHP 创建controller: php artisan make:controller xx
+    3、PHP 创建model php artisan make:model xx
+```
+    
