@@ -20,19 +20,20 @@ class UserController extends Controller
         $password = $data['password'];
 
         $user = BlogUser::where('username',$username)->get();
+
         if(!$user->isEmpty()) {
             return response()->json([
                 'success' => false,
-                'message' => 'username已存在',
-                'data' => $data
+                'message' => 'username已存在1',
+                'data' => $user
             ]);
         }
 
-        $posts = (new BlogUser)->save([
-            'username' => $username,
-            'password' => $password,
-            'real_name' => $username
-        ]);
+        $data['real_name'] = $username;
+
+        $posts = BlogUser::create($data);
+
+        //$posts = (new BlogUser($data))->save();
 
         if($posts) {
             return response()->json([
