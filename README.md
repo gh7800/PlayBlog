@@ -10,3 +10,6 @@
 ## About Laravel
 
 #### 1、PHP 运行命令 php artisan serve
+#### 2、[PHP语法链接](https://www.runoob.com/php/php-tutorial.html)
+#### 3、[laravel7 中文文档](https://learnku.com/docs/laravel/7.x/installation/7447)
+#### 4、[laravel7 Laravel学院链接](https://learnku.com/docs/laravel/7.x/installation/7447)
