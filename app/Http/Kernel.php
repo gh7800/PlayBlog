@@ -9,9 +9,9 @@ use Illuminate\Foundation\Http\Kernel as HttpKernel;
 class Kernel extends HttpKernel
 {
     /**
-     * The application's global HTTP middleware stack.
+     * the application's global http middleware stack.
      *
-     * These middleware are run during every request to your application.
+     * these middleware are run during every request to your application.
      *
      * @var array
      */
