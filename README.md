@@ -18,6 +18,8 @@
 ```
     1、PHP 运行命令 php artisan serve  ,停止 ctrl+c
     2、PHP 创建controller: php artisan make:controller xx
-    3、PHP 创建model php artisan make:model xx
+    3、PHP 创建model并-m生成数据库迁移文件 php artisan make:model xx -m
+    4、创建数据库表 php artisan migrate
+
 ```
     

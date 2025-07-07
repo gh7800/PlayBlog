@@ -17,11 +17,7 @@ use Illuminate\Support\Facades\Route;
 
 $api = app('Dingo\Api\Routing\Router');
 
-$api->version('v1',function ($api){
-    $api->post('','LoginController@login');
-});
-
-Route::post('auth/login',[LoginController::class,'login']);
+//Route::post('auth/login',[LoginController::class,'login']);
 
 Route::post('user/addUser',[UserController::class,'addUser']);
 
@@ -38,10 +34,6 @@ Route::namespace('admin')->group(function (){
 
 });
 
-//为组中所有路由的 URI 加上 admin 前缀
-Route::prefix('api')->group(function (){
-
-});
 
 
 
