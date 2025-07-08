@@ -37,7 +37,7 @@ class BlogUser extends Model
     protected $table = 'user';
 
     protected $fillable = [
-      'username','password','real_name'
+      'username','password','real_name','token','phone','version','email','address'
     ];
 
     //软删除
