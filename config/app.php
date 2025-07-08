@@ -174,7 +174,6 @@ return [
         // App\Providers\BroadcastServiceProvider::class,
         App\Providers\EventServiceProvider::class,
         App\Providers\RouteServiceProvider::class,
-        Dingo\Api\Provider\LaravelServiceProvider::class,
 
         // 其他服务提供者
         Barryvdh\LaravelIdeHelper\IdeHelperServiceProvider::class,

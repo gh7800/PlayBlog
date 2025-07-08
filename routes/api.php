@@ -15,13 +15,18 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-$api = app('Dingo\Api\Routing\Router');
 
-//Route::post('auth/login',[LoginController::class,'login']);
+//$api = app(Router::class);
 
-Route::post('user/addUser',[UserController::class,'addUser']);
+//$api->version('v1',function ($api){
+//    $api->post('user/add', [UserController::class, 'addUser']);
+//    $api->post('user/delete', [UserController::class, 'deleteUser']);
+//});
 
-Route::post('user/deleteUser',[UserController::class,'deleteUser']);
+Route::prefix('user')->group(function () {
+    Route::post('/add', [UserController::class, 'addUser']);      // 对应 /api/user/add
+    Route::post('/delete', [UserController::class, 'deleteUser']); // 对应 /api/user/delete
+});
 
 Route::get('home',function (){
     return [
@@ -29,15 +34,13 @@ Route::get('home',function (){
     ];
 });
 
-//在 api 命名空间下的路由
-Route::namespace('admin')->group(function (){
 
-});
+
+//在 api 命名空间下的路由
+//Route::namespace('admin')->group(function (){});
 
 //为组中所有路由的 URI 加上 admin 前缀
-Route::prefix('api')->group(function (){
-
-});
+//Route::prefix('api')->group(function (){});
 
 
 

@@ -51,6 +51,13 @@ class RouteServiceProvider extends ServiceProvider
         //
     }
 
+    protected function mapAuthRoutes()
+    {
+        Route::prefix('auth')
+            ->namespace($this->namespace)
+            ->group(base_path('routes/auth.php'));
+    }
+
     /**
      * Define the "web" routes for the application.
      *
@@ -80,10 +87,5 @@ class RouteServiceProvider extends ServiceProvider
             ->group(base_path('routes/api.php'));
     }
 
-    protected function mapAuthRoutes()
-    {
-        Route::prefix('auth')
-            ->namespace($this->namespace)
-            ->group(base_path('routes/auth.php'));
-    }
+
 }

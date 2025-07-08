@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\BlogUser;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use function PHPUnit\Framework\isEmpty;
 
 /**
  *User控制器
@@ -12,24 +12,30 @@ use function PHPUnit\Framework\isEmpty;
 class UserController extends Controller
 {
     //添加user
-    public function addUser(Request $request): \Illuminate\Http\JsonResponse
+    public function addUser(Request $request): JsonResponse
     {
-        $data = $request->all();
+        //$data = $request->all();
 
-        $username = $data['username'];
-        $password = $data['password'];
+        //dd($data);
 
-        $user = BlogUser::where('username',$username)->get();
+        $username = $request->input('username');
+       // $password = $data['password'];
 
-        if(!$user->isEmpty()) {
+        $userExists = BlogUser::where('username',$username)->exists();
+
+        if($userExists) {
             return response()->json([
                 'success' => false,
                 'message' => 'username已存在1',
-                'data' => $user
+                'data' => null
             ]);
         }
 
-        $data['real_name'] = $username;
+        $data = [
+            'username' => $username,
+            'password' => $request->input('password'),
+            'real_name' => $request->input('username'),
+        ];
 
         $posts = BlogUser::create($data);
 
@@ -51,7 +57,7 @@ class UserController extends Controller
     }
 
     //删除单个
-    public function deleteUser(Request $request): \Illuminate\Http\JsonResponse
+    public function deleteUser(Request $request): JsonResponse
     {
         $username = $request['username'];
 
