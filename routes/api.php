@@ -34,7 +34,10 @@ Route::namespace('admin')->group(function (){
 
 });
 
+//为组中所有路由的 URI 加上 admin 前缀
+Route::prefix('api')->group(function (){
 
+});
 
 
 
