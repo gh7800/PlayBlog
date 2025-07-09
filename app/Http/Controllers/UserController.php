@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\BlogUser;
+use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -14,20 +15,17 @@ class UserController extends Controller
     //添加user
     public function addUser(Request $request): JsonResponse
     {
-        //$data = $request->all();
-
-        //dd($data);
-
         $username = $request->input('username');
-       // $password = $data['password'];
 
-        $userExists = BlogUser::where('username',$username)->exists();
+        $userExists = BlogUser::where('username', $username)->exists();
 
-        if($userExists) {
+        if ($userExists) {
             return response()->json([
                 'success' => false,
                 'message' => 'username已存在1',
-                'data' => null
+                'data' => [
+                    'username' => $username
+                ]
             ]);
         }
 
@@ -37,46 +35,64 @@ class UserController extends Controller
             'real_name' => $request->input('username'),
         ];
 
-        $posts = BlogUser::create($data);
+        try {
+            BlogUser::create($data);
 
-        //$posts = (new BlogUser($data))->save();
-
-        if($posts) {
             return response()->json([
                 'success' => true,
                 'message' => '添加成功',
                 'data' => $data
             ]);
-        }else {
+        } catch (Exception $exception) {
             return response()->json([
                 'success' => false,
-                'message' => $php_errormsg,
+                'message' => $exception->getMessage(),
                 'data' => $data
             ]);
         }
     }
 
+    //编辑
+    public function updateUser(Request $request){
+
+    }
+
     //删除单个
     public function deleteUser(Request $request): JsonResponse
     {
-        $username = $request['username'];
+        $username = $request->input('username');
 
         $users = BlogUser::where('username', $username);
 
-        if ($users->delete()) {
-            return response()->json([
-                'success' => true,
-                'message' => '删除成功',
-                'data' => null
-            ]);
+        if ($users->exists()) {
+            try {
+                $users->delete();
+                return response()->json([
+                    'success' => true,
+                    'message' => '删除成功',
+                    'data' => [
+                        'username' => $username
+                    ]
+                ]);
+
+            } catch (Exception $e) {
+                return response()->json([
+                    'success' => true,
+                    'message' => '删除失败_' . $e->getMessage(),
+                    'data' => [
+                        'username' => $username
+                    ]
+                ]);
+            }
         } else {
             return response()->json([
                 'success' => true,
-                'message' => '删除失败',
-                'data' => null
+                'message' => '账号不存在',
+                'data' => [
+                    'username' => $username
+                ]
             ]);
         }
     }
-
 
 }
