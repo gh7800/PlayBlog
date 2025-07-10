@@ -21,5 +21,11 @@
     3、PHP 创建model并-m生成数据库迁移文件 php artisan make:model xx -m
     4、创建数据库表 php artisan migrate
 
+    5、php artisan config:clear
+    6、php artisan cache:clear
+    7、php artisan route:clear
+    8、php artisan view:clear
+    9、composer dump-autoload
+
 ```
     
