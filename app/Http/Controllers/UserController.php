@@ -60,7 +60,7 @@ class UserController extends Controller
             $user = BlogUser::where('uuid', $uuid)->firstOrFail();
             $user->update([
                 'username' => $request->input('username', $user->username),
-                'password' => $request->input('password', $user->password),
+                //'password' => $request->input('password', $user->password),
                 'real_name' => $request->input('real_name',$user->real_name),
             ]);
             return response()->json([
@@ -71,7 +71,7 @@ class UserController extends Controller
         } catch (Exception $exception) {
             return response()->json([
                 'success' => true,
-                'message' => '账号不存在',
+                'message' => '账号不存在'.$exception->getMessage(),
                 'data' => null
             ]);
         }
