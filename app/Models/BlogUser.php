@@ -5,6 +5,7 @@ namespace App\Models;
 use Eloquent;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Ramsey\Uuid\Uuid;
 
 /**
  * M-user
@@ -33,11 +34,19 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  */
 class BlogUser extends Model
 {
-
     protected $table = 'user';
 
+    protected static function booted()
+    {
+        static::creating(function ($model) {
+           if (empty($model->uuid)) {
+               $model->uuid = Uuid::uuid4()->toString();
+           }
+        });
+    }
+
     protected $fillable = [
-      'username','password','real_name','token','phone','version','email','address','uuid'
+      'username','password','real_name','token','phone','version','email','address'
     ];
 
     //软删除

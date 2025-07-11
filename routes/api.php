@@ -26,6 +26,7 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('user')->group(function () {
     Route::post('/add', [UserController::class, 'addUser']);      // 对应 /api/user/add
     Route::post('/delete', [UserController::class, 'deleteUser']); // 对应 /api/user/delete
+    Route::put('/update/{uuid}', [UserController::class, 'updateUser']); // 对应 /api/user/delete
 });
 
 Route::get('home',function (){

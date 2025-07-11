@@ -16,8 +16,9 @@ class UserController extends Controller
     public function addUser(Request $request): JsonResponse
     {
         $username = $request->input('username');
+        $password = $request->input('password');
 
-        $userExists = BlogUser::where('username', $username)->exists();
+        $userExists = BlogUser::withTrashed()->where('username', $username)->first();
 
         if ($userExists) {
             return response()->json([
@@ -31,8 +32,8 @@ class UserController extends Controller
 
         $data = [
             'username' => $username,
-            'password' => $request->input('password'),
-            'real_name' => $request->input('username'),
+            'password' => bcrypt($password),
+            'real_name' => $request->input('real_name',$username)
         ];
 
         try {
@@ -53,8 +54,27 @@ class UserController extends Controller
     }
 
     //编辑
-    public function updateUser(Request $request){
-
+    public function updateUser(Request $request,String $uuid): JsonResponse
+    {
+        try {
+            $user = BlogUser::where('uuid', $uuid)->firstOrFail();
+            $user->update([
+                'username' => $request->input('username', $user->username),
+                'password' => $request->input('password', $user->password),
+                'real_name' => $request->input('real_name',$user->real_name),
+            ]);
+            return response()->json([
+                'success' => true,
+                'message' => '修改成功！',
+                'data' => $user->refresh()
+            ]);
+        } catch (Exception $exception) {
+            return response()->json([
+                'success' => true,
+                'message' => '账号不存在',
+                'data' => null
+            ]);
+        }
     }
 
     //删除单个
@@ -62,11 +82,11 @@ class UserController extends Controller
     {
         $username = $request->input('username');
 
-        $users = BlogUser::where('username', $username);
+        $users = BlogUser::withTrashed()->where('username', $username);
 
         if ($users->exists()) {
             try {
-                $users->delete();
+                $users->forceDelete();
                 return response()->json([
                     'success' => true,
                     'message' => '删除成功',
