@@ -33,7 +33,7 @@ class UserController extends Controller
         $data = [
             'username' => $username,
             'password' => bcrypt($password),
-            'real_name' => $request->input('real_name',$username)
+            'real_name' => $request->input('real_name', $username)
         ];
 
         try {
@@ -54,14 +54,14 @@ class UserController extends Controller
     }
 
     //编辑
-    public function updateUser(Request $request,String $uuid): JsonResponse
+    public function updateUser(Request $request, string $uuid): JsonResponse
     {
         try {
             $user = BlogUser::where('uuid', $uuid)->firstOrFail();
             $user->update([
                 'username' => $request->input('username', $user->username),
                 //'password' => $request->input('password', $user->password),
-                'real_name' => $request->input('real_name',$user->real_name),
+                'real_name' => $request->input('real_name', $user->real_name),
             ]);
             return response()->json([
                 'success' => true,
@@ -71,7 +71,7 @@ class UserController extends Controller
         } catch (Exception $exception) {
             return response()->json([
                 'success' => true,
-                'message' => '账号不存在'.$exception->getMessage(),
+                'message' => '账号不存在' . $exception->getMessage(),
                 'data' => null
             ]);
         }

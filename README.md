@@ -18,8 +18,10 @@
 ```
     1、PHP 运行命令 php artisan serve  ,停止 ctrl+c
     2、PHP 创建controller: php artisan make:controller xx
-    3、PHP 创建model并-m生成数据库迁移文件 php artisan make:model xx -m
-    4、迁移数据库表 php artisan migrate
+    3、PHP 创建model并-m生成数据库迁移文件 php artisan make:model xx -mcr
+    4、执行迁移文件 php artisan migrate
+    4.1、生成迁移文件table php artisan make:migration create_xxx_table --create=xxx
+    4.2、添加字段 php artisan make:migration add_uuid_to_xxx_table --table=xxx
 
     5、php artisan config:clear
     6、php artisan cache:clear

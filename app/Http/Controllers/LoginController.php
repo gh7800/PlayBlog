@@ -40,8 +40,9 @@ class LoginController extends Controller
         } else {
             $blogUser = BlogUser::where('username',$input['username'])->first();
 
-            $str = md5(uniqid(md5(microtime(true)),true));
-            $token = sha1($str.$request['username']);
+            //$str = md5(uniqid(md5(microtime(true)),true));
+            //$token = sha1($str.$request['username']);
+            $token = $blogUser->createToken('OA-token')->plainTextToken;
 
             if($blogUser){
                 if(Hash::check($input['password'],$blogUser['password'])){//bcrypt 加密验证

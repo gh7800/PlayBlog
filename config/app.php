@@ -177,6 +177,7 @@ return [
 
         // 其他服务提供者
         Barryvdh\LaravelIdeHelper\IdeHelperServiceProvider::class,
+
     ],
 
     /*

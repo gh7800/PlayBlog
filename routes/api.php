@@ -23,7 +23,9 @@ use Illuminate\Support\Facades\Route;
 //    $api->post('user/delete', [UserController::class, 'deleteUser']);
 //});
 
-Route::prefix('user')->group(function () {
+Route::prefix('user')
+    ->middleware('auth:sanctum')
+    ->group(function () {
     Route::post('/add', [UserController::class, 'addUser']);      // 对应 /api/user/add
     Route::post('/delete', [UserController::class, 'deleteUser']); // 对应 /api/user/delete
     Route::put('/update/{uuid}', [UserController::class, 'updateUser']); // 对应 /api/user/delete
