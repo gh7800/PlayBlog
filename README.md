@@ -23,11 +23,11 @@
     4.1、生成迁移文件table php artisan make:migration create_xxx_table --create=xxx
     4.2、添加字段 php artisan make:migration add_uuid_to_xxx_table --table=xxx
 
-    5、php artisan config:clear
-    6、php artisan cache:clear
-    7、php artisan route:clear
-    8、php artisan view:clear
-    9、composer dump-autoload
+    php artisan config:clear
+    php artisan cache:clear
+    php artisan route:clear
+    php artisan view:clear
+    composer dump-autoload
 
 ```
     

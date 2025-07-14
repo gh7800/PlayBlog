@@ -4,6 +4,7 @@ namespace Module\Document\api;
 
 use App\Http\Controllers\ApiController;
 use App\Http\Controllers\Controller;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Module\Document\Models\Document;
 
@@ -28,17 +29,16 @@ class DocumentController extends ApiController
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(Request $request): JsonResponse
     {
         $data = [
             'title' => $request->input('title'),
             'content' => $request->input('content'),
         ];
-        logger('999999');
 
         try {
-            Document::create($data);
-            return $this->success($data);
+            $result = Document::create($data);
+            return $this->success($result);
         } catch (\Exception $e) {
             return $this->error($e->getMessage());
         }
