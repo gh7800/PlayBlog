@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
+use Module\Car\Controller;
 use Illuminate\Http\Request;
 
 class CarController extends Controller

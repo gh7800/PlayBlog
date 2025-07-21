@@ -1,7 +1,7 @@
 <?php
 
-use App\Http\Controllers\LoginController;
-use App\Http\Controllers\UserController;
+use Module\Car\LoginController;
+use Module\Car\UserController;
 use Illuminate\Support\Facades\Route;
 
 /*

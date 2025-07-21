@@ -2,7 +2,7 @@
 
 namespace Module\Document\api;
 
-use App\Http\Controllers\Controller;
+use Module\Car\Controller;
 
 /**
  * 请示报告添加

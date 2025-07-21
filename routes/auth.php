@@ -1,6 +1,6 @@
 <?php
 
-use App\Http\Controllers\LoginController;
+use Module\Car\LoginController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 

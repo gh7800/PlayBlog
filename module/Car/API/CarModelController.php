@@ -1,15 +1,18 @@
 <?php
 
-namespace Module\Document\api;
+namespace Module\Car\API;
 
 use App\Http\Controllers\ApiController;
 use Illuminate\Http\Request;
-use Module\Document\Models\Document;
+use Illuminate\Http\Response;
+use Module\Car\Models\CarModel;
 
-class DocumentController extends ApiController
+class CarModelController extends ApiController
 {
     /**
      * Display a listing of the resource.
+     *
+     * @return Response
      */
     public function index()
     {
@@ -18,6 +21,8 @@ class DocumentController extends ApiController
 
     /**
      * Show the form for creating a new resource.
+     *
+     * @return Response
      */
     public function create()
     {
@@ -26,6 +31,9 @@ class DocumentController extends ApiController
 
     /**
      * Store a newly created resource in storage.
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
      */
     public function store(Request $request)
     {
@@ -36,7 +44,7 @@ class DocumentController extends ApiController
         logger('999999');
 
         try {
-            Document::create($data);
+            CarModel::create($data);
             return $this->success($data);
         } catch (\Exception $e) {
             return $this->error($e->getMessage());
@@ -45,32 +53,45 @@ class DocumentController extends ApiController
 
     /**
      * Display the specified resource.
+     *
+     * @param CarModel $carModel
+     * @return Response
      */
-    public function show($id)
+    public function show(CarModel $carModel)
     {
         //
     }
 
     /**
      * Show the form for editing the specified resource.
+     *
+     * @param CarModel $carModel
+     * @return Response
      */
-    public function edit($id)
+    public function edit(CarModel $carModel)
     {
         //
     }
 
     /**
      * Update the specified resource in storage.
+     *
+     * @param Request $request
+     * @param CarModel $carModel
+     * @return Response
      */
-    public function update(Request $request, $id)
+    public function update(Request $request, CarModel $carModel)
     {
         //
     }
 
     /**
      * Remove the specified resource from storage.
+     *
+     * @param CarModel $carModel
+     * @return Response
      */
-    public function destroy($id)
+    public function destroy(CarModel $carModel)
     {
         //
     }
