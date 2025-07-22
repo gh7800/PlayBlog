@@ -14,7 +14,22 @@ class ApiController
         return response()->json([
             'success' => true,
             'message' => $message,
-            'data' => empty($data) ? null : $data,
+            'data' => $data  //empty($data) ? null : $data,
+        ]);
+    }
+
+    protected function successPaginator($data = null, $paginator = null, string $message = '操作成功'): JsonResponse
+    {
+        return response()->json([
+            'success' => true,
+            'message' => $message,
+            'data' => $data,  //empty($data) ? null : $data,
+            'paginator' => [
+                'current' => $paginator->currentPage(),
+                'last' => $paginator->lastPage(),
+                'total' => $paginator->total(),
+                'perPage' => $paginator->perPage(),
+            ]
         ]);
     }
 

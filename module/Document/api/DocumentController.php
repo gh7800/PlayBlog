@@ -3,7 +3,6 @@
 namespace Module\Document\api;
 
 use App\Http\Controllers\ApiController;
-use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Module\Document\Models\Document;
@@ -13,9 +12,17 @@ class DocumentController extends ApiController
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        //
+        try {
+            $perPage = $request->input('per_page', 15);
+            $page = $request->input('page', 1);
+            $paginator = Document::paginate($perPage, ['*'], 'page', $page);
+
+            return $this->successPaginator($paginator->items(),$paginator);
+        }catch (\Exception $exception){
+            return $this->error($exception->getMessage());
+        }
     }
 
     /**

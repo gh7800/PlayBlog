@@ -2,12 +2,13 @@
 
 namespace Module\Document\api;
 
-use Module\Car\Controller;
+
+use App\Http\Controllers\ApiController;
 
 /**
  * 请示报告添加
  */
-class DocumentAddController extends Controller
+class DocumentAddController extends ApiController
 {
     function addDocument()
     {
