@@ -5,6 +5,7 @@ namespace Module\Document\api;
 use App\Http\Controllers\ApiController;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Module\Document\Flow\DocumentService;
 use Module\Document\Models\Document;
 
 class DocumentController extends ApiController
@@ -44,7 +45,7 @@ class DocumentController extends ApiController
         ];
 
         try {
-            $result = Document::create($data);
+            $result = Document::create($data)->refresh();
             return $this->success($result);
         } catch (\Exception $e) {
             return $this->error($e->getMessage());
@@ -81,5 +82,20 @@ class DocumentController extends ApiController
     public function destroy($id)
     {
         //
+    }
+
+    /**
+     * 审批流程
+     */
+    public function approve($uuid,DocumentService $service)
+    {
+        return $service->approve($uuid);
+    }
+
+    /**
+     * 驳回
+     */
+    public function reject(Request $request){
+
     }
 }

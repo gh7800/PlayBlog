@@ -6,6 +6,7 @@ use App\Models\BlogUser;
 use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 /**
  *User控制器
@@ -15,6 +16,8 @@ class UserController extends Controller
     //添加user
     public function addUser(Request $request): JsonResponse
     {
+        $user = Auth::user();
+
         $username = $request->input('username');
         $password = $request->input('password');
 

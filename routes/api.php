@@ -1,7 +1,6 @@
 <?php
 
-use Module\Car\LoginController;
-use Module\Car\UserController;
+use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
 /*

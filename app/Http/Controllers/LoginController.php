@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Validator;
 /**
  * Login 控制器
  */
-class LoginController extends Controller
+class LoginController extends ApiController
 {
     public function login(Request $request): JsonResponse
     {
@@ -34,40 +34,24 @@ class LoginController extends Controller
 //        $validator = $request->validate($rules, $message);
 
         if ($validator->fails()) {
-            $success = false;
-            $error = $validator->errors()->first();
-            $data1 = $input;
+            return $this->error($validator->errors()->first(),$input);
         } else {
-            $blogUser = BlogUser::where('username',$input['username'])->first();
+            try {
+                $blogUser = BlogUser::where('username', $input['username'])->firstOrFail();
+                $token = $blogUser->createToken('OA-token')->plainTextToken;
+                $blogUser->token = $token;
 
-            //$str = md5(uniqid(md5(microtime(true)),true));
-            //$token = sha1($str.$request['username']);
-            $token = $blogUser->createToken('OA-token')->plainTextToken;
-
-            if($blogUser){
-                if(Hash::check($input['password'],$blogUser['password'])){//bcrypt 加密验证
-                    $success = true;
-                    $error = '登录成功';
-                    $data1 = $blogUser;
-                    $blogUser->token = $token; //设置token
-                }else{
-                    $success = false;
-                    $error = '密码错误';
-                    $data1 = $input;
+                if (Hash::check($input['password'], $blogUser['password'])) { //bcrypt 加密验证
+                    return $this->success($blogUser);
+                } else {
+                    return $this->error('密码错误',$input);
                 }
 
-            }else{
-                $success = false;
-                $error = '账号不存在';
-                $data1 = $input;
+            } catch (\Exception $e) {
+                return $this->error($e->getMessage(),$input);
             }
 
         }
 
-        return response()->json([
-            'success' => $success,
-            'message' => $error,
-            'data' => $data1
-        ]);
     }
 }

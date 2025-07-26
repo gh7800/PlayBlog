@@ -1,7 +1,6 @@
 <?php
 
-use Module\Car\LoginController;
-use Illuminate\Http\Request;
+use App\Http\Controllers\LoginController;
 use Illuminate\Support\Facades\Route;
 
 //不需要登录验证的
