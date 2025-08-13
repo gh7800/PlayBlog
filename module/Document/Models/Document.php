@@ -2,7 +2,10 @@
 
 namespace Module\Document\Models;
 
+use App\Models\Next;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Ramsey\Uuid\Uuid;
 
@@ -31,4 +34,9 @@ class Document extends Model
 
     //设置格式，默认为 'Y-m-d H:i:s'格式
     protected $dateFormat = 'Y-m-d H:i:s';
+
+    public function Next(): MorphMany
+    {
+        return $this->morphMany(Next::class, 'nextTable');
+    }
 }

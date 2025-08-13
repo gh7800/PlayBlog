@@ -42,10 +42,16 @@ class DocumentController extends ApiController
         $data = [
             'title' => $request->input('title'),
             'content' => $request->input('content'),
+            'code' => $request->input('code'),
         ];
 
         try {
             $result = Document::create($data)->refresh();
+            $result->status = 'new';
+            $result->Next()->create([
+                'text' => '新建',
+                'step' => '1'
+            ]);
             return $this->success($result);
         } catch (\Exception $e) {
             return $this->error($e->getMessage());
