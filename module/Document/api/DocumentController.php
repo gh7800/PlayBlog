@@ -39,19 +39,36 @@ class DocumentController extends ApiController
      */
     public function store(Request $request): JsonResponse
     {
+        $user = $request->user();
+
         $data = [
             'title' => $request->input('title'),
             'content' => $request->input('content'),
             'code' => $request->input('code'),
+            'status' => 'new',
+            'status_title' => '未申请',
+            'user_name' => $user->real_name,
+            'user_uuid' => $user->uuid
         ];
 
         try {
             $result = Document::create($data)->refresh();
-            $result->status = 'new';
+//            $result->status = 'new';
+//            $result->status_title = '未申请';
+
             $result->Next()->create([
                 'text' => '新建',
                 'step' => '1'
             ]);
+
+            $result->addLogs()->create([
+                'user_name' => $user->real_name,
+                'user_uuid' => $user->uuid,
+                'status' => 'new',
+                'status_title' => '未申请',
+                'step' => '1'
+            ]);
+
             return $this->success($result);
         } catch (\Exception $e) {
             return $this->error($e->getMessage());

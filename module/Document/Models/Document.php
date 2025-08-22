@@ -4,7 +4,7 @@ namespace Module\Document\Models;
 
 use App\Models\Next;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Ramsey\Uuid\Uuid;
@@ -23,7 +23,11 @@ class Document extends Model
         });
     }
 
-    protected $fillable = ['title','content'];
+    protected $fillable = ['title','content','code','uuid','step','status','status_title','user_name','user_uuid','description'];
+
+    protected $casts = [
+        'step' => 'integer'
+    ];
 
     //软删除
     use SoftDeletes;
@@ -38,5 +42,10 @@ class Document extends Model
     public function Next(): MorphMany
     {
         return $this->morphMany(Next::class, 'nextTable');
+    }
+
+    public function addLogs(): MorphMany
+    {
+        return $this->morphMany(ApprovalLog::class,'approvalLog');
     }
 }
