@@ -7,6 +7,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Module\Document\Flow\DocumentService;
 use Module\Document\Models\Document;
+use Module\Document\Models\DocumentTaskLog;
 
 class DocumentController extends ApiController
 {
@@ -20,8 +21,8 @@ class DocumentController extends ApiController
             $page = $request->input('page', 1);
             $paginator = Document::paginate($perPage, ['*'], 'page', $page);
 
-            return $this->successPaginator($paginator->items(),$paginator);
-        }catch (\Exception $exception){
+            return $this->successPaginator($paginator->items(), $paginator);
+        } catch (\Exception $exception) {
             return $this->error($exception->getMessage());
         }
     }
@@ -48,20 +49,19 @@ class DocumentController extends ApiController
             'status' => 'new',
             'status_title' => '未申请',
             'user_name' => $user->real_name,
-            'user_uuid' => $user->uuid
+            'user_uuid' => $user->uuid,
+            'step' => 1
         ];
 
         try {
             $result = Document::create($data)->refresh();
-//            $result->status = 'new';
-//            $result->status_title = '未申请';
 
-            $result->Next()->create([
-                'text' => '新建',
-                'step' => '1'
+            $result->next()->create([
+                'text' => '提交申请',
+                'step' => '2'
             ]);
 
-            $result->addLogs()->create([
+            $result->logs()->create([
                 'user_name' => $user->real_name,
                 'user_uuid' => $user->uuid,
                 'status' => 'new',
@@ -69,7 +69,17 @@ class DocumentController extends ApiController
                 'step' => '1'
             ]);
 
+            /*$result->taskLogs()->create([
+                'user_name' => $user->real_name,
+                'user_uuid' => $user->uuid,
+                'status' => 'new',
+                'status_title' => '待申请'
+            ]);*/
+
+            $result->load(['next', 'logs']);
+
             return $this->success($result);
+
         } catch (\Exception $e) {
             return $this->error($e->getMessage());
         }
@@ -110,15 +120,25 @@ class DocumentController extends ApiController
     /**
      * 审批流程
      */
-    public function approve($uuid,DocumentService $service)
+    public function approval(Request $request, DocumentService $service): Document
     {
-        return $service->approve($uuid);
+        return $service->approval($request);
     }
 
     /**
-     * 驳回
+     * 待处理
      */
-    public function reject(Request $request){
+    public function todo(Request $request)
+    {
+        $user_uuid = $request->user()->uuid;
+        $result = Document::whereHas('taskLogs', function ($query) use ($user_uuid) {
+            $query->where('user_uuid', $user_uuid);
+        })
+            ->with(['taskLogs'])
+            ->orderBy('created_at', 'desc')
+            ->get();
 
+        return $this->success($result);
     }
+
 }

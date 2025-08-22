@@ -3,6 +3,7 @@
 namespace Module\Document\Models;
 
 use App\Models\Next;
+use DateTimeInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
@@ -26,7 +27,10 @@ class Document extends Model
     protected $fillable = ['title','content','code','uuid','step','status','status_title','user_name','user_uuid','description'];
 
     protected $casts = [
-        'step' => 'integer'
+        'step' => 'integer',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+        'deleted_at' => 'datetime'
     ];
 
     //软删除
@@ -39,13 +43,25 @@ class Document extends Model
     //设置格式，默认为 'Y-m-d H:i:s'格式
     protected $dateFormat = 'Y-m-d H:i:s';
 
-    public function Next(): MorphMany
+    protected function serializeDate(DateTimeInterface $date): string
+    {
+        return $date->format('Y-m-d H:i:s');
+    }
+
+    //protected $with = ['next','logs','taskLogs'];
+
+    public function next(): MorphMany
     {
         return $this->morphMany(Next::class, 'nextTable');
     }
 
-    public function addLogs(): MorphMany
+    public function logs(): MorphMany
     {
         return $this->morphMany(ApprovalLog::class,'approvalLog');
+    }
+
+    public function taskLogs(): MorphMany
+    {
+        return $this->morphMany(DocumentTaskLog::class,'taskLog');
     }
 }

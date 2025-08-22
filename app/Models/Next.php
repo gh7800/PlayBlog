@@ -25,6 +25,7 @@ class Next extends Model
     //设置格式，默认为 'Y-m-d H:i:s'格式
     protected $dateFormat = 'Y-m-d H:i:s';
 
+    protected $visible = ['text','step'];
 
     public function nextTable(): MorphTo
     {
