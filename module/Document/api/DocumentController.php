@@ -12,7 +12,7 @@ use Module\Document\Models\DocumentTaskLog;
 class DocumentController extends ApiController
 {
     /**
-     * Display a listing of the resource.
+     * Display a listing of the resource.获取列表
      */
     public function index(Request $request)
     {
@@ -28,7 +28,7 @@ class DocumentController extends ApiController
     }
 
     /**
-     * Show the form for creating a new resource.
+     * Show the form for creating a new resource.创建表单
      */
     public function create()
     {
@@ -36,14 +36,20 @@ class DocumentController extends ApiController
     }
 
     /**
-     * Store a newly created resource in storage.
+     * Store a newly created resource in storage.保存数据
      */
     public function store(Request $request): JsonResponse
     {
         $user = $request->user();
 
+        $validate = $request->validate([
+            'title' => 'required|string',
+        ], [
+            'title.required' => '请输入标题'
+        ]);
+
         $data = [
-            'title' => $request->input('title'),
+            'title' => $validate['title'],
             'content' => $request->input('content'),
             'code' => $request->input('code'),
             'status' => 'new',
@@ -53,48 +59,41 @@ class DocumentController extends ApiController
             'step' => 1
         ];
 
+        $result = Document::create($data)->refresh();
+
+        $result->next()->create([
+            'text' => '提交申请',
+            'step' => '2'
+        ]);
+
+        $result->logs()->create([
+            'user_name' => $user->real_name,
+            'user_uuid' => $user->uuid,
+            'status' => 'new',
+            'status_title' => '未申请',
+            'step' => '1'
+        ]);
+
+        $result->load(['next', 'logs']);
+
+        return $this->success($result);
+    }
+
+    /**
+     * Display the specified resource.获取单条数据
+     */
+    public function show($id)
+    {
         try {
-            $result = Document::create($data)->refresh();
-
-            $result->next()->create([
-                'text' => '提交申请',
-                'step' => '2'
-            ]);
-
-            $result->logs()->create([
-                'user_name' => $user->real_name,
-                'user_uuid' => $user->uuid,
-                'status' => 'new',
-                'status_title' => '未申请',
-                'step' => '1'
-            ]);
-
-            /*$result->taskLogs()->create([
-                'user_name' => $user->real_name,
-                'user_uuid' => $user->uuid,
-                'status' => 'new',
-                'status_title' => '待申请'
-            ]);*/
-
-            $result->load(['next', 'logs']);
-
-            return $this->success($result);
-
-        } catch (\Exception $e) {
-            return $this->error($e->getMessage());
+            $result = Document::where('uuid', $id)->firstOrFail();
+            return $this->success($result->load(['next', 'logs', 'taskLogs']));
+        } catch (\Exception $exception) {
+            return $this->error($exception->getMessage());
         }
     }
 
     /**
-     * Display the specified resource.
-     */
-    public function show($id)
-    {
-        //
-    }
-
-    /**
-     * Show the form for editing the specified resource.
+     * Show the form for editing the specified resource.显示表单
      */
     public function edit($id)
     {
@@ -102,19 +101,28 @@ class DocumentController extends ApiController
     }
 
     /**
-     * Update the specified resource in storage.
+     * Update the specified resource in storage. 更新数据
      */
     public function update(Request $request, $id)
     {
-        //
+        try {
+            $document = Document::where('uuid', $id)->firstOrFail();
+            $document->title = $request->input('title');
+            $document->save();
+            return $this->success($document, '成功');
+        } catch (\Exception $exception) {
+            return $this->error($exception->getMessage());
+        }
     }
 
     /**
-     * Remove the specified resource from storage.
+     * Remove the specified resource from storage.删除数据
      */
-    public function destroy($id)
+    public function destroy($id): JsonResponse
     {
-        //
+        $document = Document::where('uuid', $id)->firstOrFail();
+        $document->delete();
+        return $this->success($document);
     }
 
     /**
@@ -128,10 +136,26 @@ class DocumentController extends ApiController
     /**
      * 待处理
      */
-    public function todo(Request $request)
+    public function todo(Request $request): JsonResponse
     {
         $user_uuid = $request->user()->uuid;
         $result = Document::whereHas('taskLogs', function ($query) use ($user_uuid) {
+            $query->where('user_uuid', $user_uuid);
+        })
+            ->with(['taskLogs'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return $this->success($result);
+    }
+
+    /**
+     * 已处理
+     */
+    public function processed(Request $request): JsonResponse
+    {
+        $user_uuid = $request->user()->uuid;
+        $result = Document::whereHas('logs', function ($query) use ($user_uuid) {
             $query->where('user_uuid', $user_uuid);
         })
             ->with(['taskLogs'])

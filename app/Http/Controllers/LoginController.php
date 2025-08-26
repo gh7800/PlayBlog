@@ -17,41 +17,26 @@ class LoginController extends ApiController
     {
         $input = $request->all();
 
-        $rules = [
-            'username' => 'bail|required|between:4,16|alpha_num',//bail 在第一次验证失败后停止运行验证规则
+        $validated = $request->validate([
+            'username' => 'bail|required|between:4,16|alpha_num',
             'password' => 'bail|required|between:4,16|alpha_num',
-        ];
-        $message = [
+        ], [
             'username.between' => '用户名长度4-16位',
             'username.required' => '请输入用户名',
             'username.alpha_num' => '只能输入字母、数字',
             'password.between' => '密码长度4-16位',
             'password.required' => '请输入密码',
             'password.alpha_num' => '只能输入字母、数字',
-        ];
+        ]);
 
-        $validator = Validator::make($input, $rules, $message);
-//        $validator = $request->validate($rules, $message);
+        $blogUser = BlogUser::where('username', $validated['username'])->firstOrFail();
+        $token = $blogUser->createToken('OA-token')->plainTextToken;
+        $blogUser->token = $token;
 
-        if ($validator->fails()) {
-            return $this->error($validator->errors()->first(),$input);
+        if (Hash::check($input['password'], $blogUser['password'])) { //bcrypt 加密验证
+            return $this->success($blogUser);
         } else {
-            try {
-                $blogUser = BlogUser::where('username', $input['username'])->firstOrFail();
-                $token = $blogUser->createToken('OA-token')->plainTextToken;
-                $blogUser->token = $token;
-
-                if (Hash::check($input['password'], $blogUser['password'])) { //bcrypt 加密验证
-                    return $this->success($blogUser);
-                } else {
-                    return $this->error('密码错误',$input);
-                }
-
-            } catch (\Exception $e) {
-                return $this->error($e->getMessage(),$input);
-            }
-
+            return $this->error('密码错误', $input);
         }
-
     }
 }
