@@ -29,8 +29,8 @@ class AddFieldsToTaskLogTable extends Migration
     public function down()
     {
         Schema::table('document_task_logs', function (Blueprint $table) {
-            $table->dropColumn('task_log_type');
-            $table->dropColumn('task_log_id');
+            //$table->dropColumn('task_log_type');
+            //$table->dropColumn('task_log_id');
             $table->dropColumn('status');
             $table->dropColumn('status_title');
         });

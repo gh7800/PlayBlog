@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\FileController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -29,6 +30,8 @@ Route::prefix('user')
     Route::post('/delete', [UserController::class, 'deleteUser']); // 对应 /api/user/delete
     Route::put('/update/{uuid}', [UserController::class, 'updateUser']); // 对应 /api/user/delete
 });
+
+Route::post('/upload', [FileController::class, 'upload']);
 
 Route::get('home',function (){
     return [
