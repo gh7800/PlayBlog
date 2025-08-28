@@ -48,6 +48,8 @@ class DocumentController extends ApiController
             'title.required' => '请输入标题'
         ]);
 
+        $files = $request->input('files');
+
         $data = [
             'title' => $validate['title'],
             'content' => $request->input('content'),
@@ -74,7 +76,22 @@ class DocumentController extends ApiController
             'step' => '1'
         ]);
 
-        $result->load(['next', 'logs']);
+        // 遍历数组，逐个创建文件记录
+        if(is_array($files)) {
+            foreach ($files as $fileItem) {
+                $result->files()->create([
+                    'title' => $fileItem['title'] ?? null,
+                    'file_name' => $fileItem['file_name'] ?? null,
+                    'file_path' => $fileItem['file_path'] ?? null,
+                    'file_size' => $fileItem['file_size'] ?? 0,
+                ]);
+            }
+            $result-> files() -> createMany($files);
+        }else {
+            $result->files()->create($files);
+        }
+
+        $result->load(['next', 'logs','files']);
 
         return $this->success($result);
     }

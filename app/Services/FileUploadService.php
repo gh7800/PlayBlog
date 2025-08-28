@@ -40,7 +40,7 @@ class FileUploadService
     {
         $result = [];
         foreach ($files as $file) {
-            $result[] = $this->uploadSingle($file, $dir)->toArray();
+            $result[] = $this->uploadSingle($file, $dir);
         }
         return $result;
     }

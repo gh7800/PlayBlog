@@ -17,7 +17,7 @@ class DocumentFiles extends Model
     use SoftDeletes;
     protected $dates = ['deleted_at'];
 
-    public function addFiles(): MorphTo
+    public function file(): MorphTo
     {
         return $this->morphTo(Document::class,'file_type','file_id');
     }

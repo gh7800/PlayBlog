@@ -50,6 +50,11 @@ class Document extends Model
 
     //protected $with = ['next','logs','taskLogs'];
 
+    public function files(): MorphMany
+    {
+        return $this->morphMany(DocumentFiles::class, 'file');
+    }
+
     public function next(): MorphMany
     {
         return $this->morphMany(Next::class, 'nextTable');
