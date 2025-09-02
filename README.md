@@ -22,6 +22,8 @@
     4、执行迁移文件 php artisan migrate, 查看状态 php artisan migrate:status
     5、添加(迁移文件)表   php artisan make:migration create_xxx_table --create=xxx
     6、添加字段 php artisan make:migration add_uuid_to_xxx_table --table=xxx
+    7、默认数据库迁移 php artisan migrate --path=database/migrations/blogDb --database=mysql
+    8、文件数据库迁移 php artisan migrate --path=database/migrations/fileDb --database=mysql_file
 
     php artisan config:clear
     php artisan cache:clear
