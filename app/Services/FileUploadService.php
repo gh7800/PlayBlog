@@ -24,10 +24,9 @@ class FileUploadService
         $model = [
             'title' => $file->getClientOriginalName(),
             'file_name' => $file->getClientMimeType(),
-            //'mime_type'     => $file->getClientMimeType(),
             'file_size'          => $file->getSize(),
             'file_path'          => $path,
-            'file_url'           => Storage::url($path),
+            //'file_url'           => env('APP_URL').Storage::url($path),
         ];
 
         return FileModel::on('mysql_file')->create($model);
