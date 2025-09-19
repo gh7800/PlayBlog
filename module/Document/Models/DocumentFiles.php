@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Storage;
 
 class DocumentFiles extends Model
 {
+    protected $connection = 'mysql';
     protected $table = 'document_files';
     /* 让每条记录都带上 file_url */
     protected $appends = ['file_url'];

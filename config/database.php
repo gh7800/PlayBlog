@@ -63,7 +63,8 @@ return [
             ]) : [],
         ],
 
-        'mysql_file' => [
+        //隐藏文件数据库
+        /*'mysql_file' => [
             'driver' => 'mysql',
             'url' => env('DATABASE_URL'),
             'host' => env('DB_HOST_FILE', '127.0.0.1'),
@@ -81,7 +82,7 @@ return [
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],
-        ],
+        ],*/
 
         'pgsql' => [
             'driver' => 'pgsql',
