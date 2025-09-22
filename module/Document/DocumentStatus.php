@@ -7,6 +7,7 @@ class DocumentStatus
     public const NEW = 'new';
     public const REJECTED = 'rejected';
     public const SEND = 'send';
+    public const RECEIVE = 'receive';
     public const PENDING = 'pending';
     public const APPROVED = 'approved';
     public const COMPLETED = 'completed';
@@ -15,6 +16,7 @@ class DocumentStatus
         self::NEW  => '草稿',
         self::REJECTED  => '驳回',
         self::SEND => '已申请',
+        self::RECEIVE => '已接收',
         self::PENDING => '已审批',
         self::APPROVED => '分管领导已审批',
         self::COMPLETED => '已完成',
@@ -22,7 +24,8 @@ class DocumentStatus
     private const STATUS_TITLES_TASK = [
         self::REJECTED  => '驳回',
         self::SEND => '待申请',
-        self::PENDING => '待审批',
+        self::RECEIVE => '待接收',
+        self::PENDING => '待部长审批',
         self::APPROVED => '待分管领导审批'
     ];
 

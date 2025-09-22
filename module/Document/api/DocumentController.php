@@ -88,13 +88,18 @@ class DocumentController extends ApiController
     /**
      * Display the specified resource.获取单条数据
      */
-    public function show($id)
+    public function show(Request $request,$id)
     {
+        $user = $request->user();
         try {
-            $result = Document::where('uuid', $id)
+            $document = Document::where('uuid', $id)
                 ->firstOrFail()
-                ->load(['next', 'logs', 'taskLogs', 'files']);
-            return $this->success($result);
+                ->load(['files','logs','taskLogs']);
+
+            if ($document->taskLogs->contains('user_uuid', $user->uuid)) {
+                $document->load('next'); // 满足条件再加载 next
+            }
+            return $this->success($document);
         } catch (\Exception $exception) {
             return $this->error($exception->getMessage());
         }
