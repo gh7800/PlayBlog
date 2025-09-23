@@ -24,12 +24,17 @@
     6、添加字段 php artisan make:migration add_uuid_to_xxx_table --table=xxx
     7、默认数据库迁移 php artisan migrate --path=database/migrations/blogDb --database=mysql
     8、文件数据库迁移 php artisan migrate --path=database/migrations/fileDb --database=mysql_file
+    9、回滚 php artisan migrate:rollback
+
+    composer install
+    composer update
+    composer dump-autoload
 
     php artisan config:clear
     php artisan cache:clear
     php artisan route:clear
     php artisan view:clear
-    composer dump-autoload
+    
 
 ```
     
