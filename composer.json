@@ -15,6 +15,7 @@
         "laravel/framework": "^7.29",
         "laravel/sanctum": "^2.15",
         "laravel/tinker": "^2.5",
+        "shineiot/framework7": "*",
         "symfony/uid": "^5.4"
     },
     "require-dev": {
@@ -52,7 +53,12 @@
     },
     "minimum-stability": "dev",
     "prefer-stable": true,
-
+    "repositories": [
+        {
+            "type": "composer",
+            "url": "http://packagist.shineiot.cn"
+        }
+    ],
     "scripts": {
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",

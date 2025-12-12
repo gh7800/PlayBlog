@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "1ef2c01c28ff2a194b47d188de6e0a89",
+    "content-hash": "9a4fecb7e871b00003b1f408ad68387b",
     "packages": [
         {
             "name": "asm89/stack-cors",
@@ -2600,6 +2600,46 @@
                 }
             ],
             "time": "2021-09-25T23:10:38+00:00"
+        },
+        {
+            "name": "shineiot/framework7",
+            "version": "7.2.8",
+            "source": {
+                "type": "git",
+                "url": "http://xchw:xchwgitpull@gitlab.shineiot.cn:8080/shineiot/framework7.git",
+                "reference": "e392928aac604ebca6f0b6f47da06c24377fa772"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "http://packagist.shineiot.cn/dist/shineiot/framework7/shineiot-framework7-7.2.8-89480c.zip",
+                "reference": "e392928aac604ebca6f0b6f47da06c24377fa772",
+                "shasum": "a042f3571478bde34b84303972a616b0d350ea14"
+            },
+            "require": {
+                "php": "^7.2.5"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "App\\Providers\\BaseServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "App\\": "app/",
+                    "Plugin\\": "plugin/"
+                }
+            },
+            "authors": [
+                {
+                    "name": "shineiot",
+                    "email": "team@shineiot.com"
+                }
+            ],
+            "description": "ShineIoT Base Classes",
+            "time": "2022-09-03T06:51:23+00:00"
         },
         {
             "name": "swiftmailer/swiftmailer",
