@@ -5,6 +5,7 @@ namespace Module\Document\api;
 use App\Http\Controllers\ApiController;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Module\Document\Flow\DocumentService;
 use Module\Document\Models\Document;
 
@@ -16,9 +17,25 @@ class DocumentController extends ApiController
     public function index(Request $request): JsonResponse
     {
         try {
-            $perPage = $request->input('per_page', 3);
             $page = $request->input('page', 1);
-            $paginator = Document::query()->paginate($perPage, ['*'], 'page', $page);
+            $perPage = $request->input('per_page', 15);
+            $keyword = $request->input('keyword');
+
+            $query = Document::query();
+            if ($keyword) {
+                $query->where(function ($q) use ($keyword) {
+                    $columns = Schema::getColumnListing((new Document())->getTable());
+                    // 排除不需要查询的列
+                    $excludeColumns = ['id', 'created_at', 'updated_at', 'deleted_at'];
+                    foreach ($columns as $column) {
+                        if (!in_array($column, $excludeColumns)) {
+                            $q->orWhere($column, 'like', "%{$keyword}%");
+                        }
+                    }
+                });
+            }
+
+            $paginator = $query-> paginate($perPage, ['*'], 'page', $page);
 
             return $this->successPaginator($paginator->items(), $paginator);
         } catch (\Exception $exception) {
