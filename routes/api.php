@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\FileController;
 use App\Http\Controllers\UserController;
+use App\Services\JPush\PushController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -38,6 +39,8 @@ Route::get('home',function (){
         'message'=>'sds'
     ];
 });
+
+Route::post('/push', [PushController::class, 'sendPush']);
 
 
 
