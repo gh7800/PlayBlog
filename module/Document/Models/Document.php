@@ -1,5 +1,4 @@
 <?php
-
 namespace Module\Document\Models;
 
 use App\Models\Next;

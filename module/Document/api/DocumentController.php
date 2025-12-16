@@ -5,21 +5,37 @@ namespace Module\Document\api;
 use App\Http\Controllers\ApiController;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Module\Document\Flow\DocumentService;
 use Module\Document\Models\Document;
-use Module\Document\Models\DocumentTaskLog;
 
 class DocumentController extends ApiController
 {
     /**
      * Display a listing of the resource.获取列表
      */
-    public function index(Request $request)
+    public function index(Request $request): JsonResponse
     {
         try {
-            $perPage = $request->input('per_page', 15);
             $page = $request->input('page', 1);
-            $paginator = Document::paginate($perPage, ['*'], 'page', $page);
+            $perPage = $request->input('per_page', 15);
+            $keyword = $request->input('keyword');
+
+            $query = Document::query();
+            if ($keyword) {
+                $query->where(function ($q) use ($keyword) {
+                    $columns = Schema::getColumnListing((new Document())->getTable());
+                    // 排除不需要查询的列
+                    $excludeColumns = ['id', 'created_at', 'updated_at', 'deleted_at'];
+                    foreach ($columns as $column) {
+                        if (!in_array($column, $excludeColumns)) {
+                            $q->orWhere($column, 'like', "%{$keyword}%");
+                        }
+                    }
+                });
+            }
+
+            $paginator = $query-> paginate($perPage, ['*'], 'page', $page);
 
             return $this->successPaginator($paginator->items(), $paginator);
         } catch (\Exception $exception) {
@@ -54,14 +70,14 @@ class DocumentController extends ApiController
             'title' => $validate['title'],
             'content' => $request->input('content'),
             'code' => $request->input('code'),
-            'status' => 'new',
-            'status_title' => '未申请',
+            'status' => DocumentStatus::NEW,
+            'status_title' => DocumentStatus::getStatusTitle(DocumentStatus::NEW),
             'user_name' => $user->real_name,
             'user_uuid' => $user->uuid,
             'step' => 1
         ];
 
-        $result = Document::create($data)->refresh();
+        $result = Document::query()->create($data)->refresh();
 
         $result->next()->create([
             'text' => '提交申请',
@@ -77,21 +93,11 @@ class DocumentController extends ApiController
         ]);
 
         // 遍历数组，逐个创建文件记录
-        if(is_array($files)) {
-            foreach ($files as $fileItem) {
-                $result->files()->create([
-                    'title' => $fileItem['title'] ?? null,
-                    'file_name' => $fileItem['file_name'] ?? null,
-                    'file_path' => $fileItem['file_path'] ?? null,
-                    'file_size' => $fileItem['file_size'] ?? 0,
-                ]);
-            }
-            $result-> files() -> createMany($files);
-        }else {
-            $result->files()->create($files);
+        if (is_array($files)) {
+            $result->files()->createMany($files);
         }
 
-        $result->load(['next', 'logs','files']);
+        $result->load(['next', 'logs', 'files']);
 
         return $this->success($result);
     }
@@ -99,11 +105,18 @@ class DocumentController extends ApiController
     /**
      * Display the specified resource.获取单条数据
      */
-    public function show($id)
+    public function show(Request $request,$id)
     {
+        $user = $request->user();
         try {
-            $result = Document::where('uuid', $id)->firstOrFail();
-            return $this->success($result->load(['next', 'logs', 'taskLogs']));
+            $document = Document::where('uuid', $id)
+                ->firstOrFail()
+                ->load(['files','logs','taskLogs']);
+
+            if ($document->taskLogs->contains('user_uuid', $user->uuid)) {
+                $document->load('next'); // 满足条件再加载 next
+            }
+            return $this->success($document);
         } catch (\Exception $exception) {
             return $this->error($exception->getMessage());
         }
@@ -140,14 +153,6 @@ class DocumentController extends ApiController
         $document = Document::where('uuid', $id)->firstOrFail();
         $document->delete();
         return $this->success($document);
-    }
-
-    /**
-     * 审批流程
-     */
-    public function approval(Request $request, DocumentService $service): Document
-    {
-        return $service->approval($request);
     }
 
     /**
