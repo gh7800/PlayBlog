@@ -2,18 +2,24 @@
 
 namespace App\Services\JPush;
 
+
+use Illuminate\Http\Request;
+
 class PushController
 {
-    public function sendPush()
+    public function sendPush(Request $request)
     {
         $jpush = new JPushService();
+        $regId = $request->input('registrationId');
+
+        $regIds = is_array($regId) ? $regId : [$regId];
 
         // 1. 单设备推送
-        $result = $jpush->pushToSingleDevice(
-            '1234567890abcdef1234567890abcdef', // 客户端获取的Registration ID
+        $result = $jpush->pushToBatchDevices(
+            $regIds, // 客户端获取的Registration ID
             '测试标题',
             '这是一条极光推送测试消息',
-            ['jump_url' => 'https://www.example.com', 'order_id' => '10086'] // 附加参数
+            ['type' => 'document', 'uuid' => '10010'] // 附加参数
         );
 
         // 2. 批量推送（示例）
@@ -26,11 +32,7 @@ class PushController
         // 3. 按别名推送（示例）
         // $result = $jpush->pushToAlias('user_1001', '别名推送标题', '别名推送内容');
 
-        // 输出结果
-        if ($result['success']) {
-            echo "推送成功，消息ID：" . $result['msg_id'];
-        } else {
-            echo "推送失败：" . $result['error_msg'];
-        }
+        return $result;
+
     }
 }
