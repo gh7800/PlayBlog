@@ -1,10 +1,10 @@
 <?php
 
-namespace Module\Car\Services;
+namespace App\Services;
 
-use Module\Car\Models\PermissionGroup;
-use Module\Car\Models\PermissionGroupUser;
-use Module\Car\Models\PermissionGroupPermission;
+use App\Models\PermissionGroup;
+use App\Models\PermissionGroupUser;
+use App\Models\PermissionGroupPermission;
 
 class PermissionService
 {

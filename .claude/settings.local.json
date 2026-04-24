@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git commit *)",
+      "Bash(php artisan *)",
+      "Bash(cd /d D:\\\\WebProject\\\\PlayBlog)",
+      "Bash(rm -f module/Car/Models/PermissionGroup.php module/Car/Models/PermissionGroupUser.php module/Car/Models/PermissionGroupPermission.php module/Car/Services/PermissionService.php module/Car/API/PermissionGroupController.php module/Car/DB/Migrations/2026_04_24_000003_create_permission_groups_table.php module/Car/DB/Migrations/2026_04_24_000004_create_permission_group_users_table.php module/Car/DB/Migrations/2026_04_24_000005_create_permission_group_permissions_table.php)",
+      "Bash(composer dump-autoload *)",
+      "Bash(findstr \"permission\")"
+    ]
+  }
+}

@@ -1,6 +1,6 @@
 <?php
 
-namespace Module\Car\Models;
+namespace App\Models;
 
 use App\Models\BlogUser;
 use DateTimeInterface;

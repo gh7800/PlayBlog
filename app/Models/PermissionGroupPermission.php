@@ -1,16 +1,16 @@
 <?php
 
-namespace Module\Car\Models;
+namespace App\Models;
 
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Ramsey\Uuid\Uuid;
 
-class PermissionGroup extends Model
+class PermissionGroupPermission extends Model
 {
-    protected $table = 'permission_groups';
+    protected $table = 'permission_group_permissions';
 
     protected static function boot()
     {
@@ -22,7 +22,7 @@ class PermissionGroup extends Model
         });
     }
 
-    protected $fillable = ['uuid', 'name', 'code', 'description'];
+    protected $fillable = ['uuid', 'group_uuid', 'permission_code'];
 
     protected $casts = [
         'created_at' => 'datetime',
@@ -41,13 +41,8 @@ class PermissionGroup extends Model
         return $date->format('Y-m-d H:i:s');
     }
 
-    public function users(): HasMany
+    public function group(): BelongsTo
     {
-        return $this->hasMany(PermissionGroupUser::class, 'group_uuid');
-    }
-
-    public function permissions(): HasMany
-    {
-        return $this->hasMany(PermissionGroupPermission::class, 'group_uuid');
+        return $this->belongsTo(PermissionGroup::class, 'group_uuid');
     }
 }

@@ -3,6 +3,7 @@
 namespace Module\Car\Services;
 
 use App\Models\BlogUser;
+use App\Services\PermissionService;
 use Illuminate\Http\Request;
 use Module\Car\Enums\CarStatus;
 use Module\Car\Models\CarApplication;

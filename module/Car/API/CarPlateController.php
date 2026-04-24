@@ -6,7 +6,7 @@ use App\Http\Controllers\ApiController;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Module\Car\Models\CarPlate;
-use Module\Car\Services\PermissionService;
+use App\Services\PermissionService;
 
 class CarPlateController extends ApiController
 {
