@@ -32,9 +32,9 @@ class PermissionGroupController extends ApiController
     {
         $user = $request->user();
 
-        /*if (!PermissionService::userHasPermission($user->uuid, 'car_admin')) {
+        if (!PermissionService::userHasPermission($user->uuid, 'organization_admin')) {
             return $this->error('无管理权限');
-        }*/
+        }
 
         $validate = $request->validate([
             'name' => 'required|string',
@@ -61,7 +61,7 @@ class PermissionGroupController extends ApiController
     {
         $user = $request->user();
 
-        if (!PermissionService::userHasPermission($user->uuid, 'car_admin')) {
+        if (!PermissionService::userHasPermission($user->uuid, 'organization_admin')) {
             return $this->error('无管理权限');
         }
 
@@ -85,7 +85,7 @@ class PermissionGroupController extends ApiController
     {
         $user = $request->user();
 
-        if (!PermissionService::userHasPermission($user->uuid, 'car_admin')) {
+        if (!PermissionService::userHasPermission($user->uuid, 'organization_admin')) {
             return $this->error('无管理权限');
         }
 
@@ -110,9 +110,9 @@ class PermissionGroupController extends ApiController
     {
         $user = $request->user();
 
-        /*if (!PermissionService::userHasPermission($user->uuid, 'car_admin')) {
+        if (!PermissionService::userHasPermission($user->uuid, 'organization_admin')) {
             return $this->error('无管理权限');
-        }*/
+        }
 
         $validate = $request->validate([
             'user_uuid' => 'required|uuid',
@@ -136,7 +136,7 @@ class PermissionGroupController extends ApiController
     {
         $user = $request->user();
 
-        if (!PermissionService::userHasPermission($user->uuid, 'car_admin')) {
+        if (!PermissionService::userHasPermission($user->uuid, 'organization_admin')) {
             return $this->error('无管理权限');
         }
 
@@ -155,9 +155,9 @@ class PermissionGroupController extends ApiController
     {
         $user = $request->user();
 
-        if (!PermissionService::userHasPermission($user->uuid, 'car_admin')) {
+        /*if (!PermissionService::userHasPermission($user->uuid, 'organization_admin')) {
             return $this->error('无管理权限');
-        }
+        }*/
 
         $validate = $request->validate([
             'permission_code' => 'required|string',
@@ -181,7 +181,7 @@ class PermissionGroupController extends ApiController
     {
         $user = $request->user();
 
-        if (!PermissionService::userHasPermission($user->uuid, 'car_admin')) {
+        if (!PermissionService::userHasPermission($user->uuid, 'organization_admin')) {
             return $this->error('无管理权限');
         }
 

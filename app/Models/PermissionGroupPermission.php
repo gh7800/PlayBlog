@@ -43,6 +43,6 @@ class PermissionGroupPermission extends Model
 
     public function group(): BelongsTo
     {
-        return $this->belongsTo(PermissionGroup::class, 'group_uuid');
+        return $this->belongsTo(PermissionGroup::class, 'group_uuid', 'uuid');
     }
 }

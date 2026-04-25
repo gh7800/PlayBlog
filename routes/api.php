@@ -42,9 +42,8 @@ Route::get('home',function (){
 
 Route::post('/push', [PushController::class, 'sendPush']);
 
-
-
-//在 api 命名空间下的路由
+require __DIR__ . '/organization.php';
+require __DIR__ . '/permission.php';
 //Route::namespace('admin')->group(function (){});
 
 //为组中所有路由的 URI 加上 admin 前缀
