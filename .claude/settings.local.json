@@ -1,9 +1,10 @@
 {
   "permissions": {
-    "allow": [
+    "deny": [
       "Bash(git add *)",
-      "Bash(git commit -m ' *)",
-      "Bash(git commit *)",
+      "Bash(git commit *)"
+    ],
+    "allow": [
       "Bash(php artisan *)",
       "Bash(cd /d D:\\\\WebProject\\\\PlayBlog)",
       "Bash(rm -f module/Car/Models/PermissionGroup.php module/Car/Models/PermissionGroupUser.php module/Car/Models/PermissionGroupPermission.php module/Car/Services/PermissionService.php module/Car/API/PermissionGroupController.php module/Car/DB/Migrations/2026_04_24_000003_create_permission_groups_table.php module/Car/DB/Migrations/2026_04_24_000004_create_permission_group_users_table.php module/Car/DB/Migrations/2026_04_24_000005_create_permission_group_permissions_table.php)",
@@ -13,7 +14,16 @@
       "Bash(php -l database/migrations/blogDb/2026_04_25_000002_create_departments_table.php)",
       "Bash(php -l app/Models/Company.php)",
       "Bash(php -l app/Models/Department.php)",
-      "Bash(php -l app/Services/OrganizationService.php)"
+      "Bash(php -l app/Services/OrganizationService.php)",
+      "Bash(gh pr *)",
+      "Bash(php -l \"D:/WebProject/PlayBlog/module/Notice/DB/Migrations/2026_04_27_000001_create_notices_table.php\")",
+      "Bash(php -l \"D:/WebProject/PlayBlog/module/Notice/DB/Migrations/2026_04_27_000002_create_notice_receivers_table.php\")",
+      "Bash(php -l \"D:/WebProject/PlayBlog/module/Notice/DB/Migrations/2026_04_27_000003_create_notice_files_table.php\")",
+      "Bash(php -l \"D:/WebProject/PlayBlog/module/Notice/Models/Notice.php\")",
+      "Bash(php -l \"D:/WebProject/PlayBlog/module/Notice/Models/NoticeReceiver.php\")",
+      "Bash(php -l \"D:/WebProject/PlayBlog/module/Notice/Models/NoticeFile.php\")",
+      "Bash(php *)",
+      "Skill(update-config)"
     ]
   }
 }

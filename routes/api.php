@@ -27,16 +27,18 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('user')
     ->middleware('auth:sanctum')
     ->group(function () {
-    Route::post('/add', [UserController::class, 'addUser']);      // 对应 /api/user/add
-    Route::post('/delete', [UserController::class, 'deleteUser']); // 对应 /api/user/delete
-    Route::put('/update/{uuid}', [UserController::class, 'updateUser']); // 对应 /api/user/delete
-});
+        Route::get('/info', [UserController::class, 'getUserInfo']); // 获取个人信息
+        Route::post('/add', [UserController::class, 'addUser']);      // 对应 /api/user/add
+        Route::post('/delete', [UserController::class, 'deleteUser']); // 对应 /api/user/delete
+        Route::put('/update/{uuid}', [UserController::class, 'updateUser']); // 对应 /api/user/delete
+        Route::post('/push-id', [UserController::class, 'setPushId']); // 设置推送Id
+    });
 
 Route::post('/upload', [FileController::class, 'upload']);
 
-Route::get('home',function (){
+Route::get('home', function () {
     return [
-        'message'=>'sds'
+        'message' => 'sds'
     ];
 });
 

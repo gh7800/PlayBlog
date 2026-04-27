@@ -80,6 +80,58 @@ class UserController extends Controller
         }
     }
 
+    //获取个人信息
+    public function getUserInfo(): JsonResponse
+    {
+        $user = Auth::user();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => '用户未登录',
+                'data' => null
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => '获取成功',
+            'data' => $user
+        ]);
+    }
+
+    //设置推送Id
+    public function setPushId(Request $request): JsonResponse
+    {
+        $userUuid = $request->input('user_uuid');
+        $pushId = $request->input('push_id');
+
+        if (empty($userUuid) || empty($pushId)) {
+            return response()->json([
+                'success' => false,
+                'message' => '参数不完整',
+                'data' => null
+            ]);
+        }
+
+        try {
+            $user = BlogUser::where('uuid', $userUuid)->firstOrFail();
+            $user->update(['push_id' => $pushId]);
+
+            return response()->json([
+                'success' => true,
+                'message' => '设置成功',
+                'data' => $user->refresh()
+            ]);
+        } catch (Exception $exception) {
+            return response()->json([
+                'success' => false,
+                'message' => '用户不存在',
+                'data' => null
+            ]);
+        }
+    }
+
     //删除单个
     public function deleteUser(Request $request): JsonResponse
     {
