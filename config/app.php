@@ -178,6 +178,7 @@ return [
         // 其他服务提供者
         //Barryvdh\LaravelIdeHelper\IdeHelperServiceProvider::class,
         App\Providers\PermissionServiceProvider::class,
+        Module\Notice\NoticeServiceProvider::class,
 
     ],
 
