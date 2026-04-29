@@ -67,4 +67,9 @@ class Department extends Model
     {
         return $this->belongsTo(BlogUser::class, 'leader_id', 'uuid');
     }
+
+    public function users(): HasMany
+    {
+        return $this->hasMany(BlogUser::class, 'department_uuid', 'uuid');
+    }
 }

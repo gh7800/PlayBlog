@@ -37,9 +37,10 @@ class LoginController extends ApiController
         }
 
         $token = $blogUser->createToken('OA-token')->plainTextToken;
-        $blogUser->token = $token;
-        $blogUser->save();
 
-        return $this->success($blogUser);
+        return $this->success([
+            'token' => $token,
+            'user' => $blogUser,
+        ]);
     }
 }

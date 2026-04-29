@@ -28,6 +28,8 @@ Route::prefix('user')
     ->middleware('auth:sanctum')
     ->group(function () {
         Route::get('/info', [UserController::class, 'getUserInfo']); // 获取个人信息
+        Route::get('/list', [UserController::class, 'getUserList']); // 获取用户列表
+        Route::get('/list-by-department', [UserController::class, 'getUserListByDepartment']); // 按部门获取用户列表
         Route::post('/add', [UserController::class, 'addUser']);      // 对应 /api/user/add
         Route::post('/delete', [UserController::class, 'deleteUser']); // 对应 /api/user/delete
         Route::put('/update/{uuid}', [UserController::class, 'updateUser']); // 对应 /api/user/delete

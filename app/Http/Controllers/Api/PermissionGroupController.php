@@ -32,9 +32,9 @@ class PermissionGroupController extends ApiController
     {
         $user = $request->user();
 
-        if (!PermissionService::userHasPermission($user->uuid, 'organization_admin')) {
+        /*if (!PermissionService::userHasPermission($user->uuid, 'organization_admin')) {
             return $this->error('无管理权限');
-        }
+        }*/
 
         $validate = $request->validate([
             'name' => 'required|string',
@@ -60,9 +60,9 @@ class PermissionGroupController extends ApiController
     public function update(Request $request, string $uuid): JsonResponse
     {
         $user = $request->user();
-
-        if (!PermissionService::userHasPermission($user->uuid, 'organization_admin')) {
-            return $this->error('无管理权限');
+        $user_uuid = $user->uuid;
+        if (!PermissionService::userHasPermission($user_uuid, 'organization_admin')) {
+            return $this->error("无管理权限_$user_uuid");
         }
 
         try {
@@ -110,9 +110,9 @@ class PermissionGroupController extends ApiController
     {
         $user = $request->user();
 
-        if (!PermissionService::userHasPermission($user->uuid, 'organization_admin')) {
+        /*if (!PermissionService::userHasPermission($user->uuid, 'organization_admin')) {
             return $this->error('无管理权限');
-        }
+        }*/
 
         $validate = $request->validate([
             'user_uuid' => 'required|uuid',
@@ -155,9 +155,9 @@ class PermissionGroupController extends ApiController
     {
         $user = $request->user();
 
-        /*if (!PermissionService::userHasPermission($user->uuid, 'organization_admin')) {
+        if (!PermissionService::userHasPermission($user->uuid, 'organization_admin')) {
             return $this->error('无管理权限');
-        }*/
+        }
 
         $validate = $request->validate([
             'permission_code' => 'required|string',

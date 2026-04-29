@@ -15,6 +15,9 @@ class DepartmentController extends ApiController
         try {
             $companyUuid = $request->input('company_uuid');
             if (!$companyUuid) {
+                $companyUuid = $request->user()->company_uuid;
+            }
+            if (!$companyUuid) {
                 return $this->error('请选择公司');
             }
             $departments = OrganizationService::getAllDepartmentsFlat($companyUuid);
@@ -29,6 +32,9 @@ class DepartmentController extends ApiController
         try {
             $companyUuid = $request->input('company_uuid');
             if (!$companyUuid) {
+                $companyUuid = $request->user()->company_uuid;
+            }
+            if (!$companyUuid) {
                 return $this->error('请选择公司');
             }
             $tree = OrganizationService::getDepartmentTreeByCompany($companyUuid);
@@ -41,9 +47,9 @@ class DepartmentController extends ApiController
     public function store(Request $request): JsonResponse
     {
         $user = $request->user();
-
-        if (!PermissionService::userHasPermission($user->uuid, 'organization_admin')) {
-            return $this->error('无管理权限');
+        $user_uuid = $user->uuid;
+        if (!PermissionService::userHasPermission($user_uuid, 'organization_admin')) {
+            return $this->error("无管理权限_$user_uuid");
         }
 
         $validate = $request->validate([

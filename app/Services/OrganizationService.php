@@ -101,6 +101,12 @@ class OrganizationService
 
     public static function createDepartment(array $data): Department
     {
+        if (!isset($data['sort'])) {
+            $maxSort = Department::where('company_uuid', $data['company_uuid'])
+                ->where('parent_id', $data['parent_id'] ?? null)
+                ->max('sort');
+            $data['sort'] = ($maxSort ?? 0) + 1;
+        }
         return Department::create($data);
     }
 
@@ -151,48 +157,48 @@ class OrganizationService
             ->orderBy('id')
             ->get();
 
-        return self::buildDepartmentTree($rootDepartments);
+        return self::buildDepartmentTree($rootDepartments, true);
     }
 
-    private static function buildDepartmentTree(Collection $departments): Collection
+    private static function buildDepartmentTree(Collection $departments, bool $full = true): Collection
     {
-        return $departments->map(function ($department) {
+        return $departments->map(function ($department) use ($full) {
             $children = $department->children()
                 ->orderBy('sort')
                 ->orderBy('id')
                 ->get();
 
-            return [
+            $data = [
                 'uuid' => $department->uuid,
                 'name' => $department->name,
                 'company_uuid' => $department->company_uuid,
-                'leader_id' => $department->leader_id,
-                'leader' => $department->leader ? [
+                'parent_id' => $department->parent_id,
+                'sort' => $department->sort,
+                'children' => self::buildDepartmentTree($children, $full),
+            ];
+
+            if ($full) {
+                $data['leader_id'] = $department->leader_id;
+                $data['leader'] = $department->leader ? [
                     'uuid' => $department->leader->uuid,
                     'real_name' => $department->leader->real_name,
-                ] : null,
-                'status' => $department->status,
-                'sort' => $department->sort,
-                'parent_id' => $department->parent_id,
-                'children' => self::buildDepartmentTree($children),
-            ];
+                ] : null;
+                $data['status'] = $department->status;
+            }
+
+            return $data;
         });
     }
 
     public static function getAllDepartmentsFlat(string $companyUuid): Collection
     {
-        return Department::where('company_uuid', $companyUuid)
+        $rootDepartments = Department::where('company_uuid', $companyUuid)
+            ->whereNull('parent_id')
             ->orderBy('sort')
             ->orderBy('id')
-            ->get()
-            ->map(function ($department) {
-                return [
-                    'uuid' => $department->uuid,
-                    'name' => $department->name,
-                    'parent_id' => $department->parent_id,
-                    'company_uuid' => $department->company_uuid,
-                ];
-            });
+            ->get();
+
+        return self::buildDepartmentTree($rootDepartments, false);
     }
 
     // ==================== 组织架构树 ====================
