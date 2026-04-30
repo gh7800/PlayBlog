@@ -44,6 +44,26 @@ class Handler extends ExceptionHandler
      */
     public function report(Throwable $exception)
     {
+        $context = [
+            'exception' => get_class($exception),
+            'message' => $exception->getMessage(),
+            'file' => $exception->getFile(),
+            'line' => $exception->getLine(),
+        ];
+
+        // 对 API 请求的异常补充请求上下文
+        if (app()->bound('request')) {
+            $request = app('request');
+            if ($this->isApiRequest($request)) {
+                $context['url'] = $request->fullUrl();
+                $context['method'] = $request->method();
+                $context['ip'] = $request->ip();
+                $user = $request->user();
+                $context['user_id'] = $user ? $user->id : null;
+            }
+        }
+
+        logger()->error('Exception occurred', $context);
         parent::report($exception);
     }
 

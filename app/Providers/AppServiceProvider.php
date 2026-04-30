@@ -26,10 +26,10 @@ class AppServiceProvider extends ServiceProvider
             $class = preg_replace('/^module\\\\/', 'Module\\', $class);
 
             if (class_exists($class)) {
-                logger("✅ 注册成功：$class");
+                logger("Module registered: $class");
                 $this->app->register($class);
             } else {
-                logger()->warning("❌ 未找到类: $class");
+                logger()->warning("Module class not found: $class");
             }
         }
 

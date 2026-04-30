@@ -129,6 +129,9 @@ class UserController extends Controller
     //获取用户列表
     public function getUserList(Request $request): JsonResponse
     {
+        logger()->info('user-agent', ['ua' => $request->header('User-Agent')]);
+        logger()->info('user-agent', ['Type' => $request->header('Type')]);
+
         $query = BlogUser::query();
 
         if ($request->filled('company_uuid')) {

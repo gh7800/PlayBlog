@@ -1,9 +1,5 @@
 {
   "permissions": {
-    "deny": [
-      "Bash(git add *)",
-      "Bash(git commit *)"
-    ],
     "allow": [
       "Bash(php artisan *)",
       "Bash(cd /d D:\\\\WebProject\\\\PlayBlog)",
@@ -23,7 +19,12 @@
       "Bash(php -l \"D:/WebProject/PlayBlog/module/Notice/Models/NoticeReceiver.php\")",
       "Bash(php -l \"D:/WebProject/PlayBlog/module/Notice/Models/NoticeFile.php\")",
       "Bash(php *)",
-      "Skill(update-config)"
+      "Skill(update-config)",
+      "Bash(composer update *)"
+    ],
+    "deny": [
+      "Bash(git add *)",
+      "Bash(git commit *)"
     ]
   }
 }
