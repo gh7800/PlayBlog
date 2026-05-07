@@ -17,8 +17,6 @@ class UserController extends Controller
     //添加user
     public function addUser(Request $request): JsonResponse
     {
-        $user = Auth::user();
-
         $username = $request->input('username');
         $password = $request->input('password');
 
@@ -130,7 +128,6 @@ class UserController extends Controller
     public function getUserList(Request $request): JsonResponse
     {
         logger()->info('user-agent', ['ua' => $request->header('User-Agent')]);
-        logger()->info('user-agent', ['Type' => $request->header('Type')]);
 
         $query = BlogUser::query();
 

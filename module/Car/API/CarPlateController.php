@@ -28,11 +28,12 @@ class CarPlateController extends ApiController
      */
     public function store(Request $request): JsonResponse
     {
-        $user = $request->user();
 
-        if (!PermissionService::userHasPermission($user->uuid, 'car_admin')) {
+        /*
+            $user = $request->user();
+            if (!PermissionService::userHasPermission($user->uuid, 'car_admin')) {
             return $this->error('无管理权限');
-        }
+        }*/
 
         $validate = $request->validate([
             'plate_number' => 'required|string|unique:car_plates,plate_number',

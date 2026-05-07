@@ -5,6 +5,7 @@ namespace Module\Car\Services;
 use App\Models\BlogUser;
 use App\Services\PermissionService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Module\Car\Enums\CarStatus;
 use Module\Car\Models\CarApplication;
 use Module\Car\Models\CarPlate;
@@ -54,13 +55,30 @@ class CarService
      */
     private function createApproverTask(CarApplication $application, $applicant)
     {
+        Log::info('createApproverTask', [
+            'application_id' => $application->id,
+            'applicant_uuid' => $applicant->uuid,
+        ]);
+
         $approverGroup = PermissionService::getGroupByCode('car_approver');
+        Log::info('approverGroup', [
+            'found' => $approverGroup ? true : false,
+            'group_uuid' => $approverGroup->uuid ?? null,
+            'group_code' => $approverGroup->code ?? null,
+        ]);
+
         if (!$approverGroup) {
             return;
         }
 
         $approverUsers = $approverGroup->users()->get();
+        Log::info('approverUsers', ['count' => $approverUsers->count()]);
+
         foreach ($approverUsers as $approverUser) {
+            Log::info('creating taskLog', [
+                'user_uuid' => $approverUser->user_uuid,
+                'user_name' => $approverUser->user->real_name ?? 'NULL',
+            ]);
             $application->taskLogs()->create([
                 'user_uuid' => $approverUser->user_uuid,
                 'user_name' => $approverUser->user->real_name ?? '',

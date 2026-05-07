@@ -26,7 +26,7 @@ class CarApproveController extends ApiController
         $user = $request->user();
 
         // 检查权限
-        if (!PermissionService::userHasPermission($user->uuid, 'car_approve')) {
+        if (!PermissionService::userHasPermission($user->uuid, 'car_approver')) {
             return $this->error('无审批权限');
         }
 

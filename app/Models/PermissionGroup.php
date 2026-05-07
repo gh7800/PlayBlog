@@ -43,7 +43,7 @@ class PermissionGroup extends Model
 
     public function users(): HasMany
     {
-        return $this->hasMany(PermissionGroupUser::class, 'group_uuid');
+        return $this->hasMany(PermissionGroupUser::class, 'group_uuid', 'uuid');
     }
 
     public function permissions(): HasMany

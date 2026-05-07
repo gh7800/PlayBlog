@@ -3,7 +3,7 @@
 use App\Http\Controllers\Api\PermissionGroupController;
 use Illuminate\Support\Facades\Route;
 
-Route::prefix('group')->group(function () {
+Route::prefix('group')->middleware('auth:sanctum')->group(function () {
     Route::get('/', [PermissionGroupController::class, 'index']);
     Route::post('/', [PermissionGroupController::class, 'store']);
     Route::put('/{uuid}', [PermissionGroupController::class, 'update']);
