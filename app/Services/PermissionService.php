@@ -93,6 +93,14 @@ class PermissionService
     }
 
     /**
+     * 移除用户所有角色
+     */
+    public static function removeUserFromAllGroups(string $userUuid): int
+    {
+        return PermissionGroupUser::where('user_uuid', $userUuid)->forceDelete();
+    }
+
+    /**
      * 添加权限到组
      */
     public static function addPermissionToGroup(string $groupUuid, string $permissionCode): PermissionGroupPermission

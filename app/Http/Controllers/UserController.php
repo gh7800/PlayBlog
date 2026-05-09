@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\BlogUser;
 use App\Models\Department;
+use App\Models\PermissionGroup;
 use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -85,11 +86,25 @@ class UserController extends Controller
                 $updateData['department_uuid'] = null;
             }
 
+            // 处理角色变更
+            $roleUuid = $request->input('role_uuid');
+            if ($roleUuid !== null) {
+                $role = PermissionGroup::where('uuid', $roleUuid)->first();
+                if (!$role) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => '角色不存在',
+                        'data' => null
+                    ]);
+                }
+                $updateData['role_uuid'] = $roleUuid;
+            }
+
             $user->update($updateData);
-            //$user->load(['company', 'department']);
             $data = $user->toArray();
             $data['company_name'] = $user->company->name ?? null;
             $data['department_name'] = $user->department->name ?? null;
+            $data['role_name'] = $user->role->name ?? null;
             return response()->json([
                 'success' => true,
                 'message' => '修改成功！',

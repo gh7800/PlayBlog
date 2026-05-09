@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Notifications\Notifiable;
@@ -29,7 +30,7 @@ class BlogUser extends Authenticatable
     }
 
     protected $fillable = [
-      'username','password','real_name','token','phone','version','email','address','push_id','company_uuid','department_uuid'
+      'username','password','real_name','token','phone','version','email','address','push_id','company_uuid','department_uuid','role_uuid'
     ];
 
     //软删除
@@ -49,5 +50,16 @@ class BlogUser extends Authenticatable
     public function department(): BelongsTo
     {
         return $this->belongsTo(Department::class, 'department_uuid', 'uuid');
+    }
+
+    public function permissionGroups(): BelongsToMany
+    {
+        return $this->belongsToMany(PermissionGroup::class, 'permission_group_users', 'user_uuid', 'group_uuid')
+            ->withTrashed();
+    }
+
+    public function role(): BelongsTo
+    {
+        return $this->belongsTo(PermissionGroup::class, 'role_uuid', 'uuid');
     }
 }
