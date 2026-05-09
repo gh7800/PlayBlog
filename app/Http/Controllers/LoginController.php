@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\DeviceHelper;
 use App\Models\BlogUser;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -36,11 +37,19 @@ class LoginController extends ApiController
             return $this->error('密码错误');
         }
 
-        $token = $blogUser->createToken('OA-token')->plainTextToken;
+        // 判断设备类型
+        $deviceType = DeviceHelper::getDeviceType($request->userAgent());
+
+        // 撤销同一设备的旧 token（可选，防止同一设备重复登录）
+        $blogUser->tokens()->where('name', $deviceType)->delete();
+
+        // 创建新 token，名称为设备类型
+        $token = $blogUser->createToken($deviceType)->plainTextToken;
 
         return $this->success([
             'token' => $token,
             'user' => $blogUser,
+            'device' => $deviceType,
         ]);
     }
 }

@@ -20,7 +20,9 @@
       "Bash(php -l \"D:/WebProject/PlayBlog/module/Notice/Models/NoticeFile.php\")",
       "Bash(php *)",
       "Skill(update-config)",
-      "Bash(composer update *)"
+      "Bash(composer update *)",
+      "Bash(git show *)",
+      "Bash(move routes\\\\\\\\permission.php routes\\\\\\\\roles.php)"
     ],
     "deny": [
       "Bash(git add *)",

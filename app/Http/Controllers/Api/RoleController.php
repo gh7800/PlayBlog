@@ -10,16 +10,16 @@ use App\Services\PermissionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
-class PermissionGroupController extends ApiController
+class RoleController extends ApiController
 {
     /**
-     * 权限组列表
+     * 角色列表
      */
     public function index(): JsonResponse
     {
         try {
             $groups = PermissionGroup::with(['users', 'permissions'])
-                ->where('code', 'not like', 'role_%')
+                ->where('code', 'like', 'role_%')
                 ->get();
             return $this->success($groups);
         } catch (\Exception $e) {
@@ -28,7 +28,7 @@ class PermissionGroupController extends ApiController
     }
 
     /**
-     * 创建权限组
+     * 创建角色
      */
     public function store(Request $request): JsonResponse
     {
@@ -44,9 +44,9 @@ class PermissionGroupController extends ApiController
             'description' => 'nullable|string',
             'level' => 'nullable|integer|min:1',
         ], [
-            'name.required' => '请填写组名称',
-            'code.required' => '请填写组编码',
-            'code.unique' => '组编码已存在',
+            'name.required' => '请填写角色名称',
+            'code.required' => '请填写角色编码',
+            'code.unique' => '角色编码已存在',
             'level.integer' => '等级必须是整数',
             'level.min' => '等级最小为1',
         ]);
@@ -60,7 +60,7 @@ class PermissionGroupController extends ApiController
     }
 
     /**
-     * 更新权限组
+     * 更新角色
      */
     public function update(Request $request, string $uuid): JsonResponse
     {
@@ -87,7 +87,7 @@ class PermissionGroupController extends ApiController
     }
 
     /**
-     * 删除权限组
+     * 删除角色
      */
     public function destroy(Request $request, string $uuid): JsonResponse
     {
@@ -112,7 +112,7 @@ class PermissionGroupController extends ApiController
     }
 
     /**
-     * 添加成员
+     * 添加成员到角色
      */
     public function addUser(Request $request, string $uuid): JsonResponse
     {
@@ -138,7 +138,7 @@ class PermissionGroupController extends ApiController
     }
 
     /**
-     * 移除成员
+     * 从角色移除成员
      */
     public function removeUser(Request $request, string $uuid, string $userUuid): JsonResponse
     {
@@ -157,7 +157,7 @@ class PermissionGroupController extends ApiController
     }
 
     /**
-     * 添加权限
+     * 给角色添加权限
      */
     public function addPermission(Request $request, string $uuid): JsonResponse
     {
@@ -183,7 +183,7 @@ class PermissionGroupController extends ApiController
     }
 
     /**
-     * 移除权限
+     * 移除角色权限
      */
     public function removePermission(Request $request, string $uuid, string $code): JsonResponse
     {

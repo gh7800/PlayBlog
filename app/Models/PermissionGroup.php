@@ -22,7 +22,7 @@ class PermissionGroup extends Model
         });
     }
 
-    protected $fillable = ['uuid', 'name', 'code', 'description'];
+    protected $fillable = ['uuid', 'name', 'code', 'description', 'level'];
 
     protected $casts = [
         'created_at' => 'datetime',

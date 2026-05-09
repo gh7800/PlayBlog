@@ -66,10 +66,10 @@ class CarApplyController extends ApiController
             $user = $request->user();
             $application = CarApplication::where('uuid', $uuid)
                 ->firstOrFail()
-                ->load(['logs', 'taskLogs']);
+                ->load([ 'plate', 'logs', 'taskLogs']);
 
             if ($application->user_uuid === $user->uuid) {
-                $application->load('next');
+                $application->load(['next', 'plate']);
             }
 
             return $this->success($application);

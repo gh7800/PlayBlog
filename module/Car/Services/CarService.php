@@ -3,12 +3,14 @@
 namespace Module\Car\Services;
 
 use App\Models\BlogUser;
+use App\Models\Next;
 use App\Services\PermissionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Module\Car\Enums\CarStatus;
 use Module\Car\Models\CarApplication;
 use Module\Car\Models\CarPlate;
+use Module\Car\Services\CarApprovalService;
 
 class CarService
 {
@@ -34,8 +36,15 @@ class CarService
 
         $application = CarApplication::create($data);
 
-        // 创建待办给行办审批人员
-        $this->createApproverTask($application, $user);
+        // 创建待办给当前节点审批人
+        $this->createApproverTaskByNode($application, $user);
+
+        // 创建下一步操作记录
+        $application->next()->delete();
+        $application->next()->createMany([
+            ['step' => 1, 'text' => '驳回'],
+            ['step' => 2, 'text' => '同意'],
+        ]);
 
         // 记录日志
         $application->logs()->create([
@@ -51,37 +60,27 @@ class CarService
     }
 
     /**
-     * 创建审批待办
+     * 根据当前审批节点创建审批待办
      */
-    private function createApproverTask(CarApplication $application, $applicant)
+    private function createApproverTaskByNode(CarApplication $application, $applicant)
     {
-        Log::info('createApproverTask', [
-            'application_id' => $application->id,
-            'applicant_uuid' => $applicant->uuid,
-        ]);
+        $approverService = new CarApprovalService();
+        $node = $approverService->getCurrentNode($application);
 
-        $approverGroup = PermissionService::getGroupByCode('car_approver');
-        Log::info('approverGroup', [
-            'found' => $approverGroup ? true : false,
-            'group_uuid' => $approverGroup->uuid ?? null,
-            'group_code' => $approverGroup->code ?? null,
-        ]);
-
-        if (!$approverGroup) {
+        if (!$node) {
+            Log::warning('createApproverTaskByNode: no active node found', [
+                'application_id' => $application->id,
+            ]);
             return;
         }
 
-        $approverUsers = $approverGroup->users()->get();
-        Log::info('approverUsers', ['count' => $approverUsers->count()]);
+        $approverUuids = $node->getApproverUuids();
 
-        foreach ($approverUsers as $approverUser) {
-            Log::info('creating taskLog', [
-                'user_uuid' => $approverUser->user_uuid,
-                'user_name' => $approverUser->user->real_name ?? 'NULL',
-            ]);
+        foreach ($approverUuids as $userUuid) {
+            $user = BlogUser::where('uuid', $userUuid)->first();
             $application->taskLogs()->create([
-                'user_uuid' => $approverUser->user_uuid,
-                'user_name' => $approverUser->user->real_name ?? '',
+                'user_uuid' => $userUuid,
+                'user_name' => $user->real_name ?? '',
                 'status' => CarStatus::APPLYING,
                 'status_title' => CarStatus::getStatusTitle(CarStatus::APPLYING),
             ]);
@@ -101,10 +100,17 @@ class CarService
 
         $application = CarApplication::where('uuid', $uuid)->firstOrFail();
 
+        // 检查用户是否是当前节点的审批人
+        $approverService = new CarApprovalService();
+        if (!$approverService->isApprover($application, $user->uuid)) {
+            throw new \Exception('无审批权限');
+        }
+
         if ($action === 'agree') {
             // 同意
             $plate = CarPlate::where('uuid', $plateId)->firstOrFail();
 
+            // 审批通过，step = 2
             $application->update([
                 'status' => CarStatus::APPROVED,
                 'status_title' => CarStatus::getStatusTitle(CarStatus::APPROVED),
@@ -123,16 +129,29 @@ class CarService
                 'step' => 2,
             ]);
 
-            // 清除待办
+            // 清除审批待办，给申请人创建结束用车待办
             $application->taskLogs()->forceDelete();
+            $application->taskLogs()->create([
+                'user_uuid' => $application->user_uuid,
+                'user_name' => $application->user_name,
+                'status' => CarStatus::APPROVED,
+                'status_title' => '结束用车',
+            ]);
+
+            // 更新next记录
+            $application->next()->delete();
+            $application->next()->create([
+                'step' => 3,
+                'text' => '结束用车',
+            ]);
 
         } else if ($action === 'reject') {
             // 拒绝
             $application->update([
                 'status' => CarStatus::REJECTED,
                 'status_title' => CarStatus::getStatusTitle(CarStatus::REJECTED),
-                'reject_reason' => $reply,
                 'step' => -1,
+                'reject_reason' => $reply,
             ]);
 
             $application->logs()->create([
@@ -147,24 +166,10 @@ class CarService
 
             // 清除待办
             $application->taskLogs()->forceDelete();
+            $application->next()->delete();
         }
 
-        return $application->refresh()->load(['logs']);
-    }
-
-    /**
-     * 开始用车（状态变为进行中）
-     */
-    public function start(Request $request, string $uuid): CarApplication
-    {
-        $application = CarApplication::where('uuid', $uuid)->firstOrFail();
-
-        $application->update([
-            'status' => CarStatus::ONGOING,
-            'status_title' => CarStatus::getStatusTitle(CarStatus::ONGOING),
-        ]);
-
-        return $application->refresh();
+        return $application->refresh()->load(['logs', 'next']);
     }
 
     /**
@@ -180,16 +185,34 @@ class CarService
             ->where('user_uuid', $user->uuid)
             ->firstOrFail();
 
+        if ($application->status !== CarStatus::APPROVED) {
+            throw new \Exception('只有审批通过的申请才能结束用车');
+        }
+
         if ($endKm <= $startKm) {
             throw new \Exception('结束公里数必须大于开始公里数');
         }
 
+        // 结束用车，step = 3
         $application->update([
             'status' => CarStatus::COMPLETED,
             'status_title' => CarStatus::getStatusTitle(CarStatus::COMPLETED),
+            'step' => 3,
             'start_km' => $startKm,
             'end_km' => $endKm,
         ]);
+
+        // 归还车牌，状态改为空闲
+        if ($application->approved_plate_id) {
+            $plate = CarPlate::find($application->approved_plate_id);
+            if ($plate) {
+                $plate->update(['status' => 0]);
+            }
+        }
+
+        // 清除申请人的结束用车待办
+        $application->taskLogs()->forceDelete();
+        $application->next()->delete();
 
         $application->logs()->create([
             'user_uuid' => $user->uuid,

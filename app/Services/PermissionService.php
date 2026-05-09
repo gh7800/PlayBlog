@@ -10,6 +10,18 @@ use Illuminate\Support\Facades\Log;
 class PermissionService
 {
     /**
+     * 检查用户是否有直接分配的权限
+     */
+    public static function userHasDirectPermission(string $userUuid, string $permissionCode): bool
+    {
+        return PermissionGroupUser::where('user_uuid', $userUuid)
+            ->whereHas('group.permissions', function ($query) use ($permissionCode) {
+                $query->where('permission_code', $permissionCode);
+            })
+            ->exists();
+    }
+
+    /**
      * 根据 code 获取权限组
      */
     public static function getGroupByCode(string $code): ?PermissionGroup
@@ -18,13 +30,35 @@ class PermissionService
     }
 
     /**
-     * 检查用户是否有指定权限
+     * 检查用户是否有指定权限（包含等级继承）
+     * 高等级用户（level值小）自动拥有低等级用户的权限
      */
     public static function userHasPermission(string $userUuid, string $permissionCode): bool
     {
-        return PermissionGroupUser::where('user_uuid', $userUuid)
-            ->whereHas('group.permissions', function ($query) use ($permissionCode) {
-                $query->where('permission_code', $permissionCode);
+        // 直接权限检查
+        if (self::userHasDirectPermission($userUuid, $permissionCode)) {
+            return true;
+        }
+
+        // 获取用户所有角色
+        $userGroups = PermissionGroupUser::where('user_uuid', $userUuid)
+            ->with('group')
+            ->get()
+            ->pluck('group')
+            ->filter();
+
+        if ($userGroups->isEmpty()) {
+            return false;
+        }
+
+        // 获取用户最高等级（最小数字）
+        $userMaxLevel = $userGroups->min('level');
+
+        // 检查是否存在更低等级（数字更大）的角色拥有该权限
+        // 高等级用户(level值小)自动继承低等级用户(level值大)的权限
+        return PermissionGroupPermission::where('permission_code', $permissionCode)
+            ->whereHas('group', function ($query) use ($userMaxLevel) {
+                $query->where('level', '>', $userMaxLevel);
             })
             ->exists();
     }
@@ -55,7 +89,7 @@ class PermissionService
     {
         return PermissionGroupUser::where('group_uuid', $groupUuid)
             ->where('user_uuid', $userUuid)
-            ->delete() > 0;
+            ->forceDelete() > 0;
     }
 
     /**

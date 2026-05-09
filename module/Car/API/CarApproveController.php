@@ -7,7 +7,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Module\Car\Models\CarPlate;
 use Module\Car\Services\CarService;
-use App\Services\PermissionService;
 
 class CarApproveController extends ApiController
 {
@@ -23,13 +22,6 @@ class CarApproveController extends ApiController
      */
     public function approve(Request $request): JsonResponse
     {
-        $user = $request->user();
-
-        // 检查权限
-        if (!PermissionService::userHasPermission($user->uuid, 'car_approver')) {
-            return $this->error('无审批权限');
-        }
-
         $validate = $request->validate([
             'uuid' => 'required|uuid',
             'action' => 'required|in:agree,reject',
