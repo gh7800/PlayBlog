@@ -18,7 +18,7 @@ class DocumentController extends ApiController
     {
         try {
             $page = $request->input('page', 1);
-            $perPage = $request->input('per_page', 15);
+            $perPage = $request->input('per_page', config('pagination.per_page'));
             $keyword = $request->input('keyword');
 
             $query = Document::query();

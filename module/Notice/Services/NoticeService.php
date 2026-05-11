@@ -51,23 +51,15 @@ class NoticeService
     public function list(Request $request)
     {
         $user = Auth::user();
-        $page = $request->input('page', 1);
-        $perPage = $request->input('per_page', 15);
+        $perPage = $request->input('per_page', config('pagination.per_page'));
 
-        $paginator = Notice::where('is_deleted', 0)
+        return Notice::where('is_deleted', 0)
             ->whereHas('receivers', function ($query) use ($user) {
                 $query->where('user_uuid', $user->uuid);
             })
             ->with(['sender'])
             ->orderBy('created_at', 'desc')
-            ->paginate($perPage, ['*'], 'page', $page);
-
-        return [
-            'data' => $paginator->items(),
-            'total' => $paginator->total(),
-            'page' => $paginator->currentPage(),
-            'per_page' => $paginator->perPage(),
-        ];
+            ->paginate($perPage);
     }
 
     /**

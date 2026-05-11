@@ -54,8 +54,7 @@ class PermissionService
         // 获取用户最高等级（最小数字）
         $userMaxLevel = $userGroups->min('level');
 
-        // 检查是否存在更低等级（数字更大）的角色拥有该权限
-        // 高等级用户(level值小)自动继承低等级用户(level值大)的权限
+        // 高等级用户(level值小)自动继承低等级组(level值大)的所有权限
         return PermissionGroupPermission::where('permission_code', $permissionCode)
             ->whereHas('group', function ($query) use ($userMaxLevel) {
                 $query->where('level', '>', $userMaxLevel);

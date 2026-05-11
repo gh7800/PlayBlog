@@ -2,6 +2,8 @@
 
 namespace Module\Car\Models;
 
+use App\Models\Department;
+use App\Models\PermissionGroupUser;
 use App\Services\PermissionService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -52,7 +54,28 @@ class CarApprovalNode extends Model
                 return [$this->approver_value];
 
             case 'dept_head':
-                return [];
+                if (!$applicant || !$applicant->department_uuid) {
+                    return [];
+                }
+                $department = Department::where('uuid', $applicant->department_uuid)->first();
+                if (!$department) {
+                    return [];
+                }
+                // 优先使用部门 leader_id
+                if ($department->leader_id) {
+                    return [$department->leader_id];
+                }
+                // 回退到同部门的 role_department_head 权限组用户
+                $group = PermissionService::getGroupByCode('role_department_head');
+                if (!$group) {
+                    return [];
+                }
+                return PermissionGroupUser::where('group_uuid', $group->uuid)
+                    ->whereHas('user', function ($q) use ($applicant) {
+                        $q->where('department_uuid', $applicant->department_uuid);
+                    })
+                    ->pluck('user_uuid')
+                    ->toArray();
 
             default:
                 return [];

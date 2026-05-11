@@ -16,6 +16,7 @@ Route::post('approve', [CarApproveController::class, 'approve']);
 Route::get('approve/todo', [CarApproveController::class, 'todo']);
 Route::get('approve/done', [CarApproveController::class, 'processed']);
 Route::get('approve/plates', [CarApproveController::class, 'plates']);
+Route::get('approve/mileage-abnormal', [CarApproveController::class, 'mileageAbnormal']);
 
 // 结束用车
 Route::post('end/{uuid}', [CarEndController::class, 'end']);

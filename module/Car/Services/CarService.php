@@ -40,10 +40,12 @@ class CarService
         $this->createApproverTaskByNode($application, $user);
 
         // 创建下一步操作记录
+        $approverService = new CarApprovalService();
+        $nextStep = $approverService->getNextStep($application);
         $application->next()->delete();
         $application->next()->createMany([
-            ['step' => 1, 'text' => '驳回'],
-            ['step' => 2, 'text' => '同意'],
+            ['step' => $application->step, 'text' => '驳回'],
+            ['step' => $nextStep, 'text' => '同意'],
         ]);
 
         // 记录日志
@@ -74,7 +76,7 @@ class CarService
             return;
         }
 
-        $approverUuids = $node->getApproverUuids();
+        $approverUuids = $node->getApproverUuids($applicant);
 
         foreach ($approverUuids as $userUuid) {
             $user = BlogUser::where('uuid', $userUuid)->first();
@@ -107,43 +109,77 @@ class CarService
         }
 
         if ($action === 'agree') {
-            // 同意
-            $plate = CarPlate::where('uuid', $plateId)->firstOrFail();
+            $isLastNode = $approverService->isLastNode($application);
+            $nextStep = $approverService->getNextStep($application);
 
-            // 审批通过，step = 2
-            $application->update([
-                'status' => CarStatus::APPROVED,
-                'status_title' => CarStatus::getStatusTitle(CarStatus::APPROVED),
-                'step' => 2,
-                'approved_plate_id' => $plate->id,
-                'approved_plate_number' => $plate->plate_number,
-            ]);
+            if ($isLastNode) {
+                // 最后一个节点 - 需要选择车牌，审批通过
+                if (!$plateId) {
+                    throw new \Exception('同意时必须选择车牌');
+                }
+                $plate = CarPlate::where('uuid', $plateId)->firstOrFail();
 
-            $application->logs()->create([
-                'user_uuid' => $user->uuid,
-                'user_name' => $user->real_name,
-                'status' => CarStatus::APPROVED,
-                'status_title' => '同意',
-                'reply' => $reply,
-                'result' => 1,
-                'step' => 2,
-            ]);
+                $application->update([
+                    'status' => CarStatus::APPROVED,
+                    'status_title' => CarStatus::getStatusTitle(CarStatus::APPROVED),
+                    'step' => $nextStep,
+                    'approved_plate_id' => $plate->id,
+                    'approved_plate_number' => $plate->plate_number,
+                ]);
 
-            // 清除审批待办，给申请人创建结束用车待办
-            $application->taskLogs()->forceDelete();
-            $application->taskLogs()->create([
-                'user_uuid' => $application->user_uuid,
-                'user_name' => $application->user_name,
-                'status' => CarStatus::APPROVED,
-                'status_title' => '结束用车',
-            ]);
+                $application->logs()->create([
+                    'user_uuid' => $user->uuid,
+                    'user_name' => $user->real_name,
+                    'status' => CarStatus::APPROVED,
+                    'status_title' => '同意',
+                    'reply' => $reply,
+                    'result' => 1,
+                    'step' => $nextStep,
+                ]);
 
-            // 更新next记录
-            $application->next()->delete();
-            $application->next()->create([
-                'step' => 3,
-                'text' => '结束用车',
-            ]);
+                // 清除审批待办，给申请人创建结束用车待办
+                $application->taskLogs()->forceDelete();
+                $application->taskLogs()->create([
+                    'user_uuid' => $application->user_uuid,
+                    'user_name' => $application->user_name,
+                    'status' => CarStatus::APPROVED,
+                    'status_title' => '结束用车',
+                ]);
+
+                // 更新next记录
+                $application->next()->delete();
+                $application->next()->create([
+                    'step' => $nextStep + 1,
+                    'text' => '结束用车',
+                ]);
+
+            } else {
+                // 非最后节点 - 推进到下一节点
+                $application->update([
+                    'step' => $nextStep,
+                ]);
+
+                $application->logs()->create([
+                    'user_uuid' => $user->uuid,
+                    'user_name' => $user->real_name,
+                    'status' => CarStatus::APPLYING,
+                    'status_title' => '同意',
+                    'reply' => $reply,
+                    'result' => 1,
+                    'step' => $nextStep,
+                ]);
+
+                // 清除当前待办，为下一节点审批人创建待办
+                $application->taskLogs()->forceDelete();
+                $this->createApproverTaskByNode($application, $application->user);
+
+                // 更新next记录
+                $application->next()->delete();
+                $application->next()->createMany([
+                    ['step' => $nextStep, 'text' => '驳回'],
+                    ['step' => $nextStep + 1, 'text' => '同意'],
+                ]);
+            }
 
         } else if ($action === 'reject') {
             // 拒绝
@@ -193,6 +229,22 @@ class CarService
             throw new \Exception('结束公里数必须大于开始公里数');
         }
 
+        // 检查里程异常：本次开始公里数比上次结束公里数大于2
+        $mileageStatus = 'normal';
+        if ($application->approved_plate_id) {
+            $lastApplication = CarApplication::where('id', '!=', $application->id)
+                ->where('approved_plate_id', $application->approved_plate_id)
+                ->where('status', CarStatus::COMPLETED)
+                ->orderBy('use_time', 'desc')
+                ->first();
+
+            if ($lastApplication && $lastApplication->end_km !== null) {
+                if ($startKm - $lastApplication->end_km > 2) {
+                    $mileageStatus = 'abnormal';
+                }
+            }
+        }
+
         // 结束用车，step = 3
         $application->update([
             'status' => CarStatus::COMPLETED,
@@ -200,7 +252,19 @@ class CarService
             'step' => 3,
             'start_km' => $startKm,
             'end_km' => $endKm,
+            'mileage_status' => $mileageStatus,
         ]);
+
+        if ($mileageStatus === 'abnormal') {
+            Log::warning("用车里程异常", [
+                'application_uuid' => $application->uuid,
+                'plate_id' => $application->approved_plate_id,
+                'plate_number' => $application->approved_plate_number,
+                'last_end_km' => $lastApplication->end_km,
+                'current_start_km' => $startKm,
+                'diff' => $startKm - $lastApplication->end_km,
+            ]);
+        }
 
         // 归还车牌，状态改为空闲
         if ($application->approved_plate_id) {
@@ -232,27 +296,19 @@ class CarService
      */
     public function list(Request $request)
     {
-        $page = $request->input('page', 1);
-        $perPage = $request->input('per_page', 15);
-        $keyword = $request->input('keyword');
+        $perPage = $request->input('per_page', config('pagination.per_page'));
 
-        $query = CarApplication::query();
-
-        if ($keyword) {
-            $query->where(function ($q) use ($keyword) {
+        return CarApplication::query()
+            ->when($request->input('mine'), fn($q) => $q->where('user_uuid', $request->user()->uuid))
+            ->when($keyword = $request->input('keyword'), fn($q) => $q->where(function ($q) use ($keyword) {
                 $q->where('reason', 'like', "%{$keyword}%")
-                    ->orWhere('user_name', 'like', "%{$keyword}%");
-            });
-        }
-
-        $paginator = $query->orderBy('created_at', 'desc')->paginate($perPage, ['*'], 'page', $page);
-
-        return [
-            'data' => $paginator->items(),
-            'total' => $paginator->total(),
-            'page' => $paginator->currentPage(),
-            'per_page' => $paginator->perPage(),
-        ];
+                    ->orWhere('user_name', 'like', "%{$keyword}%")
+                    ->orWhere('approved_plate_number', 'like', "%{$keyword}%");
+            }))
+            ->when($request->input('km_min'), fn($q, $v) => $q->where(fn($q) => $q->where('start_km', '>=', $v)->orWhere('end_km', '>=', $v)))
+            ->when($request->input('km_max'), fn($q, $v) => $q->where(fn($q) => $q->where('start_km', '<=', $v)->orWhere('end_km', '<=', $v)))
+            ->orderBy('created_at', 'desc')
+            ->paginate($perPage);
     }
 
     /**
@@ -261,13 +317,14 @@ class CarService
     public function todoList(Request $request)
     {
         $user = $request->user();
+        $perPage = $request->input('per_page', config('pagination.per_page'));
 
-        return CarApplication::whereHas('taskLogs', function ($query) use ($user) {
+        return CarApplication::query()->whereHas('taskLogs', function ($query) use ($user) {
             $query->where('user_uuid', $user->uuid);
         })
             ->with(['taskLogs'])
             ->orderBy('created_at', 'desc')
-            ->get();
+            ->paginate($perPage);
     }
 
     /**
@@ -283,5 +340,18 @@ class CarService
             ->with(['logs'])
             ->orderBy('created_at', 'desc')
             ->get();
+    }
+
+    /**
+     * 里程异常列表
+     */
+    public function mileageAbnormalList(Request $request)
+    {
+        $perPage = $request->input('per_page', config('pagination.per_page'));
+
+        return CarApplication::where('mileage_status', 'abnormal')
+            ->with(['plate'])
+            ->orderBy('updated_at', 'desc')
+            ->paginate($perPage);
     }
 }

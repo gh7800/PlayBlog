@@ -2,6 +2,7 @@
 
 namespace Module\Car\Models;
 
+use App\Models\BlogUser;
 use App\Models\Next;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Model;
@@ -28,7 +29,7 @@ class CarApplication extends Model
         'uuid', 'user_uuid', 'user_name', 'car_type', 'reason',
         'passenger_count', 'use_time', 'remark', 'status',
         'status_title', 'step', 'approved_plate_id', 'approved_plate_number',
-        'reject_reason', 'start_km', 'end_km'
+        'reject_reason', 'start_km', 'end_km', 'mileage_status'
     ];
 
     protected $casts = [
@@ -70,5 +71,10 @@ class CarApplication extends Model
     public function plate(): BelongsTo
     {
         return $this->belongsTo(CarPlate::class, 'approved_plate_id');
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(BlogUser::class, 'user_uuid', 'uuid');
     }
 }

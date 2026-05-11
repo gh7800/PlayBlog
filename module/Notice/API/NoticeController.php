@@ -2,12 +2,12 @@
 
 namespace Module\Notice\API;
 
-use App\Http\Controllers\Controller;
+use App\Http\Controllers\ApiController;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Module\Notice\Services\NoticeService;
 
-class NoticeController extends Controller
+class NoticeController extends ApiController
 {
     private NoticeService $noticeService;
 
@@ -46,16 +46,9 @@ class NoticeController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $result = $this->noticeService->list($request);
+        $paginator = $this->noticeService->list($request);
 
-        return response()->json([
-            'success' => true,
-            'message' => '获取成功',
-            'data' => $result['data'],
-            'total' => $result['total'],
-            'page' => $result['page'],
-            'per_page' => $result['per_page'],
-        ]);
+        return $this->successPaginator($paginator->items(), $paginator, '获取成功');
     }
 
     /**

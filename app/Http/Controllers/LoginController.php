@@ -46,10 +46,9 @@ class LoginController extends ApiController
         // 创建新 token，名称为设备类型
         $token = $blogUser->createToken($deviceType)->plainTextToken;
 
-        return $this->success([
+        return $this->success(array_merge($blogUser->toArray(), [
             'token' => $token,
-            'user' => $blogUser,
             'device' => $deviceType,
-        ]);
+        ]));
     }
 }

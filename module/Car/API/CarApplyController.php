@@ -50,8 +50,8 @@ class CarApplyController extends ApiController
     {
         try {
             $user = $request->user();
-            $result = $this->carService->list($request);
-            return $this->successPaginator($result['data'], $result);
+            $paginator = $this->carService->list($request);
+            return $this->successPaginator($paginator->items(), $paginator);
         } catch (\Exception $e) {
             return $this->error($e->getMessage());
         }

@@ -25,12 +25,11 @@ class CarApproveController extends ApiController
         $validate = $request->validate([
             'uuid' => 'required|uuid',
             'action' => 'required|in:agree,reject',
-            'plate_id' => 'required_if:action,agree|uuid',
+            'plate_id' => 'nullable|uuid',
             'reply' => 'nullable|string',
         ], [
             'uuid.required' => '请选择要审批的申请',
             'action.required' => '请选择审批操作',
-            'plate_id.required_if' => '同意时必须选择车牌',
         ]);
 
         try {
@@ -47,8 +46,8 @@ class CarApproveController extends ApiController
     public function todo(Request $request): JsonResponse
     {
         try {
-            $result = $this->carService->todoList($request);
-            return $this->success($result);
+            $paginator = $this->carService->todoList($request);
+            return $this->successPaginator($paginator->items(), $paginator);
         } catch (\Exception $e) {
             return $this->error($e->getMessage());
         }
@@ -74,5 +73,18 @@ class CarApproveController extends ApiController
     {
         $plates = CarPlate::where('status', 0)->get();
         return $this->success($plates);
+    }
+
+    /**
+     * 里程异常列表
+     */
+    public function mileageAbnormal(Request $request): JsonResponse
+    {
+        try {
+            $paginator = $this->carService->mileageAbnormalList($request);
+            return $this->successPaginator($paginator->items(), $paginator);
+        } catch (\Exception $e) {
+            return $this->error($e->getMessage());
+        }
     }
 }
