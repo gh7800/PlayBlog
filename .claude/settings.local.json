@@ -22,7 +22,11 @@
       "Skill(update-config)",
       "Bash(composer update *)",
       "Bash(git show *)",
-      "Bash(move routes\\\\\\\\permission.php routes\\\\\\\\roles.php)"
+      "Bash(move routes\\\\\\\\permission.php routes\\\\\\\\roles.php)",
+      "Bash(netstat -ano)",
+      "Bash(curl *)",
+      "Read(//d/webproject//**)",
+      "Read(//mnt/d/**)"
     ],
     "deny": [
       "Bash(git add *)",

@@ -8,6 +8,7 @@ use App\Services\PermissionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Module\Car\Enums\CarStatus;
+use Module\Car\Jobs\CarAutoApproveJob;
 use Module\Car\Models\CarApplication;
 use Module\Car\Models\CarPlate;
 use Module\Car\Services\CarApprovalService;
@@ -86,6 +87,12 @@ class CarService
                 'status' => CarStatus::APPLYING,
                 'status_title' => CarStatus::getStatusTitle(CarStatus::APPLYING),
             ]);
+        }
+
+        // 部长审批节点：分发延迟2分钟的自动审批任务
+        if ($node->approver_type === 'dept_head') {
+            CarAutoApproveJob::dispatch($application->uuid, $application->step)
+                ->delay(now()->addMinutes(2));
         }
     }
 
@@ -204,6 +211,58 @@ class CarService
             $application->taskLogs()->forceDelete();
             $application->next()->delete();
         }
+
+        return $application->refresh()->load(['logs', 'next']);
+    }
+
+    /**
+     * 系统自动审批（部长审批倒计时到期自动同意）
+     */
+    public function autoApprove(CarApplication $application): CarApplication
+    {
+        $approverService = new CarApprovalService();
+
+        if ($approverService->isLastNode($application)) {
+            throw new \Exception('最后一个节点不支持自动审批');
+        }
+
+        // 用待办中的审批人作为日志记录的用户
+        $approverUser = null;
+        $taskLog = $application->taskLogs()->first();
+        if ($taskLog) {
+            $approverUser = BlogUser::where('uuid', $taskLog->user_uuid)->first();
+        }
+
+        $nextStep = $approverService->getNextStep($application);
+
+        // 推进到下一节点
+        $application->update([
+            'step' => $nextStep,
+        ]);
+
+        // 记录日志
+        $logUserUuid = $approverUser ? $approverUser->uuid : '';
+        $logUserName = ($approverUser ? $approverUser->real_name : '系统') . '(自动审批)';
+        $application->logs()->create([
+            'user_uuid' => $logUserUuid,
+            'user_name' => $logUserName,
+            'status' => CarStatus::APPLYING,
+            'status_title' => '自动同意',
+            'reply' => '倒计时结束，系统自动同意',
+            'result' => 1,
+            'step' => $nextStep,
+        ]);
+
+        // 清除当前待办，为下一节点创建待办
+        $application->taskLogs()->forceDelete();
+        $this->createApproverTaskByNode($application, $application->user);
+
+        // 更新next记录
+        $application->next()->delete();
+        $application->next()->createMany([
+            ['step' => $nextStep, 'text' => '驳回'],
+            ['step' => $nextStep + 1, 'text' => '同意'],
+        ]);
 
         return $application->refresh()->load(['logs', 'next']);
     }

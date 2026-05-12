@@ -37,4 +37,6 @@
     
 
 ```
+#### 6、队列命令
+- php artisan queue:work database --sleep=3 --tries=3
     
