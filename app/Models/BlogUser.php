@@ -30,7 +30,7 @@ class BlogUser extends Authenticatable
     }
 
     protected $fillable = [
-      'username','password','real_name','token','phone','version','email','address','push_id','company_uuid','department_uuid','role_uuid'
+      'username','password','real_name','token','phone','version','email','address','push_id','company_uuid','department_uuid','role_uuid','status'
     ];
 
     //软删除

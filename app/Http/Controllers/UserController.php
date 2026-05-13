@@ -6,6 +6,9 @@ use App\Models\BlogUser;
 use App\Models\Department;
 use App\Models\PermissionGroup;
 use Exception;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Foundation\Bus\DispatchesJobs;
+use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -13,8 +16,10 @@ use Illuminate\Support\Facades\Auth;
 /**
  *User控制器
  */
-class UserController extends Controller
+class UserController extends ApiController
 {
+    use AuthorizesRequests, DispatchesJobs, ValidatesRequests;
+
     //添加user
     public function addUser(Request $request): JsonResponse
     {
@@ -24,35 +29,46 @@ class UserController extends Controller
         $userExists = BlogUser::withTrashed()->where('username', $username)->first();
 
         if ($userExists) {
-            return response()->json([
-                'success' => false,
-                'message' => 'username已存在1',
-                'data' => [
-                    'username' => $username
-                ]
-            ]);
+            return $this->error('username已存在1', ['username' => $username]);
         }
 
         $data = [
             'username' => $username,
             'password' => bcrypt($password),
-            'real_name' => $request->input('real_name', $username)
+            'real_name' => $request->input('real_name', $username),
+            'phone' => $request->input('phone'),
+            'email' => $request->input('email'),
+            'address' => $request->input('address'),
+            'status' => $request->input('status', 1),
         ];
 
-        try {
-            BlogUser::create($data);
+        $departmentUuid = $request->input('department_uuid');
+        if ($departmentUuid) {
+            $department = Department::where('uuid', $departmentUuid)->first();
+            if (!$department) {
+                return $this->error('部门不存在');
+            }
+            $data['department_uuid'] = $departmentUuid;
+            $data['company_uuid'] = $department->company_uuid;
+        } elseif ($request->has('company_uuid')) {
+            $data['company_uuid'] = $request->input('company_uuid');
+        }
 
-            return response()->json([
-                'success' => true,
-                'message' => '添加成功',
-                'data' => $data
-            ]);
+        if ($request->has('role_uuid')) {
+            $roleUuid = $request->input('role_uuid');
+            $role = PermissionGroup::where('uuid', $roleUuid)->first();
+            if (!$role) {
+                return $this->error('角色不存在');
+            }
+            $data['role_uuid'] = $roleUuid;
+        }
+
+        try {
+            $user = BlogUser::create($data);
+
+            return $this->success($user->fresh()->load(['company', 'department', 'role']), '添加成功');
         } catch (Exception $exception) {
-            return response()->json([
-                'success' => false,
-                'message' => $exception->getMessage(),
-                'data' => $data
-            ]);
+            return $this->error($exception->getMessage(), $data);
         }
     }
 
@@ -62,60 +78,47 @@ class UserController extends Controller
         try {
             $user = BlogUser::where('uuid', $uuid)->firstOrFail();
 
-            $updateData = [
-                'username' => $request->input('username', $user->username),
-                'real_name' => $request->input('real_name', $user->real_name),
-            ];
+            $updateData = [];
+            foreach (['username', 'real_name', 'phone', 'email', 'address', 'status'] as $field) {
+                if ($request->has($field)) {
+                    $updateData[$field] = $request->input($field);
+                }
+            }
 
-            $companyUuid = $request->input('company_uuid');
             $departmentUuid = $request->input('department_uuid');
-
             if ($departmentUuid) {
                 $department = Department::where('uuid', $departmentUuid)->first();
                 if (!$department) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => '部门不存在',
-                        'data' => null
-                    ]);
+                    return $this->error('部门不存在');
                 }
                 $updateData['department_uuid'] = $departmentUuid;
                 $updateData['company_uuid'] = $department->company_uuid;
-            } elseif ($companyUuid) {
-                $updateData['company_uuid'] = $companyUuid;
+            } elseif ($request->has('company_uuid')) {
+                $updateData['company_uuid'] = $request->input('company_uuid');
                 $updateData['department_uuid'] = null;
             }
 
-            // 处理角色变更
-            $roleUuid = $request->input('role_uuid');
-            if ($roleUuid !== null) {
+            if ($request->has('role_uuid')) {
+                $roleUuid = $request->input('role_uuid');
                 $role = PermissionGroup::where('uuid', $roleUuid)->first();
                 if (!$role) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => '角色不存在',
-                        'data' => null
-                    ]);
+                    return $this->error('角色不存在');
                 }
                 $updateData['role_uuid'] = $roleUuid;
             }
 
-            $user->update($updateData);
+            if (!empty($updateData)) {
+                $user->update($updateData);
+            }
+
+            $user->load(['company', 'department', 'role']);
             $data = $user->toArray();
             $data['company_name'] = $user->company->name ?? null;
             $data['department_name'] = $user->department->name ?? null;
             $data['role_name'] = $user->role->name ?? null;
-            return response()->json([
-                'success' => true,
-                'message' => '修改成功！',
-                'data' => $data
-            ]);
+            return $this->success($data, '修改成功！');
         } catch (Exception $exception) {
-            return response()->json([
-                'success' => false,
-                'message' => $exception->getMessage(),
-                'data' => null
-            ]);
+            return $this->error($exception->getMessage());
         }
     }
 
@@ -125,26 +128,16 @@ class UserController extends Controller
         $user = Auth::user();
 
         if (!$user) {
-            return response()->json([
-                'success' => false,
-                'message' => '用户未登录',
-                'data' => null
-            ]);
+            return $this->error('用户未登录');
         }
 
-        return response()->json([
-            'success' => true,
-            'message' => '获取成功',
-            'data' => $user
-        ]);
+        return $this->success($user, '获取成功');
     }
 
     //获取用户列表
     public function getUserList(Request $request): JsonResponse
     {
-        logger()->info('user-agent', ['ua' => $request->header('User-Agent')]);
-
-        $query = BlogUser::query();
+        $query = BlogUser::with(['company', 'department', 'role']);
 
         if ($request->filled('company_uuid')) {
             $query->where('company_uuid', $request->input('company_uuid'));
@@ -162,37 +155,10 @@ class UserController extends Controller
             $query->where('real_name', 'like', '%' . $request->input('real_name') . '%');
         }
 
-        $page = $request->input('page', 1);
         $pageSize = $request->input('page_size', 15);
+        $paginator = $query->orderBy('username', 'asc')->paginate($pageSize);
 
-        $total = $query->count();
-        $list = $query->with(['company', 'department'])
-            ->orderBy('id', 'desc')
-            ->skip(($page - 1) * $pageSize)
-            ->take($pageSize)
-            ->get()
-            ->map(function ($user) {
-                return [
-                    'uuid' => $user->uuid,
-                    'username' => $user->username,
-                    'real_name' => $user->real_name,
-                    'company_uuid' => $user->company_uuid,
-                    'company_name' => $user->company->name ?? null,
-                    'department_uuid' => $user->department_uuid,
-                    'department_name' => $user->department->name ?? null,
-                ];
-            });
-
-        return response()->json([
-            'success' => true,
-            'message' => '获取成功',
-            'data' => [
-                'list' => $list,
-                'total' => $total,
-                'page' => (int) $page,
-                'page_size' => (int) $pageSize,
-            ]
-        ]);
+        return $this->successPaginator($paginator->items(), $paginator);
     }
 
     //按部门获取用户列表（不分页，树形结构）
@@ -203,11 +169,7 @@ class UserController extends Controller
             $companyUuid = $request->user()->company_uuid;
         }
         if (!$companyUuid) {
-            return response()->json([
-                'success' => false,
-                'message' => '请选择公司',
-                'data' => null
-            ]);
+            return $this->error('请选择公司');
         }
 
         $rootDepartments = Department::where('company_uuid', $companyUuid)
@@ -218,11 +180,7 @@ class UserController extends Controller
 
         $departments = $this->buildDepartmentWithUsers($rootDepartments);
 
-        return response()->json([
-            'success' => true,
-            'message' => '获取成功',
-            'data' => $departments,
-        ]);
+        return $this->success($departments, '获取成功');
     }
 
     private function buildDepartmentWithUsers($departments)
@@ -256,28 +214,16 @@ class UserController extends Controller
         $pushId = $request->input('push_id');
 
         if (empty($userUuid) || empty($pushId)) {
-            return response()->json([
-                'success' => false,
-                'message' => '参数不完整',
-                'data' => null
-            ]);
+            return $this->error('参数不完整');
         }
 
         try {
             $user = BlogUser::where('uuid', $userUuid)->firstOrFail();
             $user->update(['push_id' => $pushId]);
 
-            return response()->json([
-                'success' => true,
-                'message' => '设置成功',
-                'data' => $user->refresh()
-            ]);
+            return $this->success($user->refresh(), '设置成功');
         } catch (Exception $exception) {
-            return response()->json([
-                'success' => false,
-                'message' => '用户不存在',
-                'data' => null
-            ]);
+            return $this->error('用户不存在');
         }
     }
 
@@ -291,31 +237,12 @@ class UserController extends Controller
         if ($users->exists()) {
             try {
                 $users->forceDelete();
-                return response()->json([
-                    'success' => true,
-                    'message' => '删除成功',
-                    'data' => [
-                        'username' => $username
-                    ]
-                ]);
-
+                return $this->success(['username' => $username], '删除成功');
             } catch (Exception $e) {
-                return response()->json([
-                    'success' => true,
-                    'message' => '删除失败_' . $e->getMessage(),
-                    'data' => [
-                        'username' => $username
-                    ]
-                ]);
+                return $this->success(['username' => $username], '删除失败_' . $e->getMessage());
             }
         } else {
-            return response()->json([
-                'success' => true,
-                'message' => '账号不存在',
-                'data' => [
-                    'username' => $username
-                ]
-            ]);
+            return $this->success(['username' => $username], '账号不存在');
         }
     }
 

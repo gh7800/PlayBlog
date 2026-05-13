@@ -51,4 +51,11 @@ class LoginController extends ApiController
             'device' => $deviceType,
         ]));
     }
+
+    public function logout(Request $request): JsonResponse
+    {
+        $request->user()->currentAccessToken()->delete();
+
+        return $this->success(null, '登出成功');
+    }
 }

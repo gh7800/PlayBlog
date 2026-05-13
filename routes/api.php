@@ -16,14 +16,6 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-
-//$api = app(Router::class);
-
-//$api->version('v1',function ($api){
-//    $api->post('user/add', [UserController::class, 'addUser']);
-//    $api->post('user/delete', [UserController::class, 'deleteUser']);
-//});
-
 Route::prefix('user')
     ->middleware('auth:sanctum')
     ->group(function () {
@@ -47,7 +39,6 @@ Route::get('home', function () {
 Route::post('/push', [PushController::class, 'sendPush']);
 
 require __DIR__ . '/organization.php';
-//Route::namespace('admin')->group(function (){});
 
 //为组中所有路由的 URI 加上 admin 前缀
 //Route::prefix('api')->group(function (){});
