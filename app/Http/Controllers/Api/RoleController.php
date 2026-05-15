@@ -18,7 +18,7 @@ class RoleController extends ApiController
     public function index(): JsonResponse
     {
         try {
-            $groups = PermissionGroup::with(['users', 'permissions.permission'])
+            $groups = PermissionGroup::with(['users.user', 'permissions.permission'])
                 ->where('code', 'like', 'role_%')
                 ->get();
             return $this->success($groups);
@@ -86,7 +86,7 @@ class RoleController extends ApiController
                 PermissionService::syncGroupPermissions($uuid, $request->input('permission_uuids'));
             }
 
-            $group->load(['users', 'permissions.permission']);
+            $group->load(['users.user', 'permissions.permission']);
             return $this->success($group);
         } catch (\Exception $e) {
             return $this->error($e->getMessage());

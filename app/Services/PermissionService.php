@@ -33,6 +33,16 @@ class PermissionService
     }
 
     /**
+     * 根据 uuid 或 code 获取权限组（兼容新旧数据）
+     */
+    public static function getGroup(string $uuidOrCode): ?PermissionGroup
+    {
+        return PermissionGroup::where('uuid', $uuidOrCode)
+            ->orWhere('code', $uuidOrCode)
+            ->first();
+    }
+
+    /**
      * 检查用户是否有指定权限（包含等级继承）
      * 高等级用户（level值小）自动拥有低等级用户的权限
      */

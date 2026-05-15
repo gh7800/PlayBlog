@@ -15,12 +15,17 @@ class PermissionGroupController extends ApiController
     /**
      * 权限组列表
      */
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
         try {
-            $groups = PermissionGroup::with(['users', 'permissions.permission'])
-                ->where('code', 'not like', 'role_%')
-                ->get();
+            $query = PermissionGroup::with(['users.user', 'permissions.permission'])
+                ->where('code', 'not like', 'role_%');
+
+            if ($request->has('type')) {
+                $query->where('type', $request->input('type'));
+            }
+
+            $groups = $query->get();
             return $this->success($groups);
         } catch (\Exception $e) {
             return $this->error($e->getMessage());
@@ -36,15 +41,16 @@ class PermissionGroupController extends ApiController
 
         $validate = $request->validate([
             'name' => 'required|string',
-            'code' => 'required|string|unique:permission_groups,code',
+            'code' => 'nullable|string|unique:permission_groups,code',
             'description' => 'nullable|string',
             'level' => 'nullable|integer|min:1',
+            'type' => 'nullable|string|in:user,permission',
         ], [
             'name.required' => '请填写组名称',
-            'code.required' => '请填写组编码',
             'code.unique' => '组编码已存在',
             'level.integer' => '等级必须是整数',
             'level.min' => '等级最小为1',
+            'type.in' => '类型必须是 user 或 permission',
         ]);
 
         try {
@@ -74,6 +80,10 @@ class PermissionGroupController extends ApiController
             if ($request->has('level')) {
                 $group->level = $request->input('level');
             }
+            if ($request->has('type')) {
+                $request->validate(['type' => 'string|in:user,permission']);
+                $group->type = $request->input('type');
+            }
             $group->save();
 
             // 批量替换人员
@@ -86,7 +96,7 @@ class PermissionGroupController extends ApiController
                 PermissionService::syncGroupPermissions($uuid, $request->input('permission_uuids'));
             }
 
-            $group->load(['users', 'permissions.permission']);
+            $group->load(['users.user', 'permissions.permission']);
             return $this->success($group);
         } catch (\Exception $e) {
             return $this->error($e->getMessage());

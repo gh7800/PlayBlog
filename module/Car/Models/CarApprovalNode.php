@@ -44,7 +44,7 @@ class CarApprovalNode extends Model
     {
         switch ($this->approver_type) {
             case 'permission_group':
-                $group = PermissionService::getGroupByCode($this->approver_value);
+                $group = PermissionService::getGroup($this->approver_value);
                 if (!$group) {
                     return [];
                 }
@@ -66,7 +66,7 @@ class CarApprovalNode extends Model
                     return [$department->leader_id];
                 }
                 // 回退到同部门的 role_department_head 权限组用户
-                $group = PermissionService::getGroupByCode('role_department_head');
+                $group = PermissionService::getGroup('role_department_head');
                 if (!$group) {
                     return [];
                 }

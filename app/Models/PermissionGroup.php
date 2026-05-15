@@ -19,10 +19,13 @@ class PermissionGroup extends Model
             if (empty($model->uuid)) {
                 $model->uuid = Uuid::uuid4()->toString();
             }
+            if (empty($model->code)) {
+                $model->code = 'group_' . $model->uuid;
+            }
         });
     }
 
-    protected $fillable = ['uuid', 'name', 'code', 'description', 'level'];
+    protected $fillable = ['uuid', 'name', 'code', 'description', 'level', 'type'];
 
     protected $casts = [
         'created_at' => 'datetime',
