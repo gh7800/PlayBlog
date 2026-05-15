@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\BlogUser;
 use App\Models\Department;
 use App\Models\PermissionGroup;
+use App\Services\PermissionService;
 use Exception;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Foundation\Bus\DispatchesJobs;
@@ -131,7 +132,10 @@ class UserController extends ApiController
             return $this->error('用户未登录');
         }
 
-        return $this->success($user, '获取成功');
+        $data = $user->toArray();
+        $data['permissions'] = PermissionService::getUserPermissionCodes($user->uuid);
+
+        return $this->success($data, '获取成功');
     }
 
     //获取用户列表

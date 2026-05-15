@@ -26,7 +26,12 @@
       "Bash(netstat -ano)",
       "Bash(curl *)",
       "Read(//d/webproject//**)",
-      "Read(//mnt/d/**)"
+      "Read(//mnt/d/**)",
+      "Skill(superpowers:brainstorming)",
+      "Bash(composer show *)",
+      "Bash(awk '{print $2, $3}')",
+      "Bash(awk '{ *)",
+      "Bash(export LANG=C)"
     ],
     "deny": [
       "Bash(git add *)",

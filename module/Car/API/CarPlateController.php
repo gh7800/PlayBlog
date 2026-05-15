@@ -60,18 +60,34 @@ class CarPlateController extends ApiController
      */
     public function update(Request $request, string $uuid): JsonResponse
     {
+        $request->validate([
+            'plate_number' => 'sometimes|required|string|unique:car_plates,plate_number,' . $uuid . ',uuid',
+            'description' => 'nullable|string',
+            'status' => 'sometimes|integer|in:0,1',
+        ], [
+            'plate_number.required' => '请填写车牌号',
+            'plate_number.unique' => '车牌号已存在',
+            'status.in' => '状态值无效',
+        ]);
+
         $user = $request->user();
 
-        if (!PermissionService::userHasPermission($user->uuid, 'car_admin')) {
+        /*if (!PermissionService::userHasPermission($user->uuid, 'car_admin')) {
             return $this->error('无管理权限');
-        }
+        }*/
 
         try {
             $plate = CarPlate::where('uuid', $uuid)->firstOrFail();
 
-            $plate->plate_number = $request->input('plate_number', $plate->plate_number);
-            $plate->description = $request->input('description', $plate->description);
-            $plate->status = $request->input('status', $plate->status);
+            if ($request->has('plate_number')) {
+                $plate->plate_number = $request->input('plate_number');
+            }
+            if ($request->has('description')) {
+                $plate->description = $request->input('description');
+            }
+            if ($request->has('status')) {
+                $plate->status = (int) $request->input('status');
+            }
             $plate->save();
 
             return $this->success($plate);

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Permission;
 use App\Models\PermissionGroup;
 use App\Models\PermissionGroupUser;
 use App\Models\PermissionGroupPermission;
@@ -16,7 +17,9 @@ class PermissionService
     {
         return PermissionGroupUser::where('user_uuid', $userUuid)
             ->whereHas('group.permissions', function ($query) use ($permissionCode) {
-                $query->where('permission_code', $permissionCode);
+                $query->whereHas('permission', function ($q) use ($permissionCode) {
+                    $q->where('code', $permissionCode);
+                });
             })
             ->exists();
     }
@@ -40,26 +43,7 @@ class PermissionService
             return true;
         }
 
-        // 获取用户所有角色
-        $userGroups = PermissionGroupUser::where('user_uuid', $userUuid)
-            ->with('group')
-            ->get()
-            ->pluck('group')
-            ->filter();
-
-        if ($userGroups->isEmpty()) {
-            return false;
-        }
-
-        // 获取用户最高等级（最小数字）
-        $userMaxLevel = $userGroups->min('level');
-
-        // 高等级用户(level值小)自动继承低等级组(level值大)的所有权限
-        return PermissionGroupPermission::where('permission_code', $permissionCode)
-            ->whereHas('group', function ($query) use ($userMaxLevel) {
-                $query->where('level', '>', $userMaxLevel);
-            })
-            ->exists();
+        return false;
     }
 
     /**
@@ -102,21 +86,108 @@ class PermissionService
     /**
      * 添加权限到组
      */
-    public static function addPermissionToGroup(string $groupUuid, string $permissionCode): PermissionGroupPermission
+    public static function addPermissionToGroup(string $groupUuid, string $permissionUuid): PermissionGroupPermission
     {
         return PermissionGroupPermission::firstOrCreate([
             'group_uuid' => $groupUuid,
-            'permission_code' => $permissionCode,
+            'permission_uuid' => $permissionUuid,
         ]);
     }
 
     /**
      * 从组移除权限
      */
-    public static function removePermissionFromGroup(string $groupUuid, string $permissionCode): bool
+    public static function removePermissionFromGroup(string $groupUuid, string $permissionUuid): bool
     {
         return PermissionGroupPermission::where('group_uuid', $groupUuid)
-            ->where('permission_code', $permissionCode)
+            ->where('permission_uuid', $permissionUuid)
             ->delete() > 0;
+    }
+
+    /**
+     * 批量更新权限组人员
+     */
+    public static function syncGroupUsers(string $groupUuid, array $userUuids): void
+    {
+        PermissionGroupUser::where('group_uuid', $groupUuid)->forceDelete();
+        foreach ($userUuids as $userUuid) {
+            PermissionGroupUser::create([
+                'group_uuid' => $groupUuid,
+                'user_uuid' => $userUuid,
+            ]);
+        }
+    }
+
+    /**
+     * 批量更新权限组权限
+     */
+    public static function syncGroupPermissions(string $groupUuid, array $permissionUuids): void
+    {
+        PermissionGroupPermission::where('group_uuid', $groupUuid)->forceDelete();
+        foreach ($permissionUuids as $permissionUuid) {
+            PermissionGroupPermission::create([
+                'group_uuid' => $groupUuid,
+                'permission_uuid' => $permissionUuid,
+            ]);
+        }
+    }
+
+    /**
+     * 获取用户所有权限码列表
+     */
+    public static function getUserPermissionCodes(string $userUuid): array
+    {
+        return PermissionGroupUser::where('user_uuid', $userUuid)
+            ->whereHas('group.permissions')
+            ->with('group.permissions.permission')
+            ->get()
+            ->pluck('group.permissions')
+            ->flatten()
+            ->pluck('permission.code')
+            ->filter()
+            ->unique()
+            ->values()
+            ->toArray();
+    }
+
+    /**
+     * 获取用户权限列表（按模块分组的 tree 结构）
+     */
+    public static function getUserPermissionsTree(string $userUuid): array
+    {
+        $codes = self::getUserPermissionCodes($userUuid);
+        if (empty($codes)) {
+            return [];
+        }
+
+        $permissions = Permission::whereIn('code', $codes)->get()->groupBy('module');
+
+        $tree = [];
+        foreach ($permissions as $module => $items) {
+            $grouped = $items->groupBy('type');
+            $children = [];
+
+            if ($grouped->has('page')) {
+                $children[] = [
+                    'type' => 'page',
+                    'label' => '页面权限',
+                    'children' => $grouped->get('page')->values(),
+                ];
+            }
+            if ($grouped->has('function')) {
+                $children[] = [
+                    'type' => 'function',
+                    'label' => '功能权限',
+                    'children' => $grouped->get('function')->values(),
+                ];
+            }
+
+            $tree[] = [
+                'module' => $module,
+                'children' => $children,
+            ];
+        }
+
+        return $tree;
     }
 }

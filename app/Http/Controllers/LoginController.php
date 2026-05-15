@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Helpers\DeviceHelper;
 use App\Models\BlogUser;
+use App\Services\PermissionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -49,6 +50,7 @@ class LoginController extends ApiController
         return $this->success(array_merge($blogUser->toArray(), [
             'token' => $token,
             'device' => $deviceType,
+            'permissions' => PermissionService::getUserPermissionCodes($blogUser->uuid),
         ]));
     }
 

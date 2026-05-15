@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Permission;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -22,7 +23,7 @@ class PermissionGroupPermission extends Model
         });
     }
 
-    protected $fillable = ['uuid', 'group_uuid', 'permission_code'];
+    protected $fillable = ['uuid', 'group_uuid', 'permission_uuid'];
 
     protected $casts = [
         'created_at' => 'datetime',
@@ -44,5 +45,10 @@ class PermissionGroupPermission extends Model
     public function group(): BelongsTo
     {
         return $this->belongsTo(PermissionGroup::class, 'group_uuid', 'uuid')->withTrashed();
+    }
+
+    public function permission(): BelongsTo
+    {
+        return $this->belongsTo(Permission::class, 'permission_uuid', 'uuid');
     }
 }

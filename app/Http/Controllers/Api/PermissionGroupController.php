@@ -18,7 +18,7 @@ class PermissionGroupController extends ApiController
     public function index(): JsonResponse
     {
         try {
-            $groups = PermissionGroup::with(['users', 'permissions'])
+            $groups = PermissionGroup::with(['users', 'permissions.permission'])
                 ->where('code', 'not like', 'role_%')
                 ->get();
             return $this->success($groups);
@@ -33,10 +33,6 @@ class PermissionGroupController extends ApiController
     public function store(Request $request): JsonResponse
     {
         $user = $request->user();
-
-        /*if (!PermissionService::userHasPermission($user->uuid, 'organization_admin')) {
-            return $this->error('无管理权限');
-        }*/
 
         $validate = $request->validate([
             'name' => 'required|string',
@@ -60,7 +56,7 @@ class PermissionGroupController extends ApiController
     }
 
     /**
-     * 更新权限组
+     * 更新权限组（支持批量编辑人员和权限）
      */
     public function update(Request $request, string $uuid): JsonResponse
     {
@@ -80,6 +76,17 @@ class PermissionGroupController extends ApiController
             }
             $group->save();
 
+            // 批量替换人员
+            if ($request->has('user_uuids')) {
+                PermissionService::syncGroupUsers($uuid, $request->input('user_uuids'));
+            }
+
+            // 批量替换权限
+            if ($request->has('permission_uuids')) {
+                PermissionService::syncGroupPermissions($uuid, $request->input('permission_uuids'));
+            }
+
+            $group->load(['users', 'permissions.permission']);
             return $this->success($group);
         } catch (\Exception $e) {
             return $this->error($e->getMessage());
@@ -117,10 +124,6 @@ class PermissionGroupController extends ApiController
     public function addUser(Request $request, string $uuid): JsonResponse
     {
         $user = $request->user();
-
-        /*if (!PermissionService::userHasPermission($user->uuid, 'organization_admin')) {
-            return $this->error('无管理权限');
-        }*/
 
         $validate = $request->validate([
             'user_uuid' => 'required|uuid',
@@ -168,14 +171,14 @@ class PermissionGroupController extends ApiController
         }
 
         $validate = $request->validate([
-            'permission_code' => 'required|string',
+            'permission_uuid' => 'required|string',
         ], [
-            'permission_code.required' => '请填写权限码',
+            'permission_uuid.required' => '请填写权限UUID',
         ]);
 
         try {
             $group = PermissionGroup::where('uuid', $uuid)->firstOrFail();
-            $permission = PermissionService::addPermissionToGroup($uuid, $validate['permission_code']);
+            $permission = PermissionService::addPermissionToGroup($uuid, $validate['permission_uuid']);
             return $this->success($permission);
         } catch (\Exception $e) {
             return $this->error($e->getMessage());
@@ -185,7 +188,7 @@ class PermissionGroupController extends ApiController
     /**
      * 移除权限
      */
-    public function removePermission(Request $request, string $uuid, string $code): JsonResponse
+    public function removePermission(Request $request, string $uuid, string $permissionUuid): JsonResponse
     {
         $user = $request->user();
 
@@ -194,7 +197,7 @@ class PermissionGroupController extends ApiController
         }
 
         try {
-            PermissionService::removePermissionFromGroup($uuid, $code);
+            PermissionService::removePermissionFromGroup($uuid, $permissionUuid);
             return $this->success(null, '移除成功');
         } catch (\Exception $e) {
             return $this->error($e->getMessage());
