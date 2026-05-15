@@ -28,6 +28,7 @@ Route::prefix('role')->group(function () {
 // 权限组路由
 Route::prefix('group')->group(function () {
     Route::get('/', [PermissionGroupController::class, 'index']);
+    Route::get('/{uuid}', [PermissionGroupController::class, 'show']);
     Route::post('/', [PermissionGroupController::class, 'store']);
     Route::put('/{uuid}', [PermissionGroupController::class, 'update']);
     Route::delete('/{uuid}', [PermissionGroupController::class, 'destroy']);

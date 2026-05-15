@@ -33,6 +33,21 @@ class PermissionGroupController extends ApiController
     }
 
     /**
+     * 权限组详情
+     */
+    public function show(string $uuid): JsonResponse
+    {
+        try {
+            $group = PermissionGroup::with(['users.user', 'permissions.permission'])
+                ->where('uuid', $uuid)
+                ->firstOrFail();
+            return $this->success($group);
+        } catch (\Exception $e) {
+            return $this->error($e->getMessage());
+        }
+    }
+
+    /**
      * 创建权限组
      */
     public function store(Request $request): JsonResponse
