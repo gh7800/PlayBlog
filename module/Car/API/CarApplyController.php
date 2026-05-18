@@ -63,14 +63,9 @@ class CarApplyController extends ApiController
     public function show(Request $request, string $uuid): JsonResponse
     {
         try {
-            $user = $request->user();
             $application = CarApplication::where('uuid', $uuid)
                 ->firstOrFail()
-                ->load([ 'plate', 'logs', 'taskLogs']);
-
-            if ($application->user_uuid === $user->uuid) {
-                $application->load(['next', 'plate']);
-            }
+                ->load(['plate', 'logs', 'taskLogs', 'next']);
 
             return $this->success($application);
         } catch (\Exception $e) {

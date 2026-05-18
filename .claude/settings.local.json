@@ -31,7 +31,8 @@
       "Bash(composer show *)",
       "Bash(awk '{print $2, $3}')",
       "Bash(awk '{ *)",
-      "Bash(export LANG=C)"
+      "Bash(export LANG=C)",
+      "Bash(awk NR>=127 && NR<=161 *)"
     ],
     "deny": [
       "Bash(git add *)",

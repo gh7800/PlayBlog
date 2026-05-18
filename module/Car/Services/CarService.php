@@ -129,7 +129,7 @@ class CarService
                 $application->update([
                     'status' => CarStatus::APPROVED,
                     'status_title' => CarStatus::getStatusTitle(CarStatus::APPROVED),
-                    'step' => $nextStep,
+                    'step' => $nextStep + 1,
                     'approved_plate_id' => $plate->id,
                     'approved_plate_number' => $plate->plate_number,
                 ]);
@@ -141,7 +141,7 @@ class CarService
                     'status_title' => '同意',
                     'reply' => $reply,
                     'result' => 1,
-                    'step' => $nextStep,
+                    'step' => $nextStep + 1,
                 ]);
 
                 // 清除审批待办，给申请人创建结束用车待办
@@ -366,6 +366,7 @@ class CarService
             }))
             ->when($request->input('km_min'), fn($q, $v) => $q->where(fn($q) => $q->where('start_km', '>=', $v)->orWhere('end_km', '>=', $v)))
             ->when($request->input('km_max'), fn($q, $v) => $q->where(fn($q) => $q->where('start_km', '<=', $v)->orWhere('end_km', '<=', $v)))
+            ->when($request->input('mileage_status'), fn($q, $v) => $q->where('mileage_status', $v))
             ->orderBy('created_at', 'desc')
             ->paginate($perPage);
     }
