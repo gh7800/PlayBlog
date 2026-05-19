@@ -17,6 +17,7 @@
         "laravel/framework": "^8.83",
         "laravel/sanctum": "^2.15",
         "laravel/tinker": "^2.5",
+        "phpoffice/phpword": "^1.4",
         "shineiot/framework7": "*",
         "symfony/uid": "^5.4"
     },

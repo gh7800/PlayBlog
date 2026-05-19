@@ -8,6 +8,8 @@ use Module\Car\API\CarPlateController;
 // 用车申请
 Route::post('apply', [CarApplyController::class, 'store']);
 Route::get('apply', [CarApplyController::class, 'index']);
+Route::get('apply/export', [CarApplyController::class, 'export']);
+Route::get('apply/export-word/{uuid}', [CarApplyController::class, 'exportWord']);
 Route::get('apply/{uuid}', [CarApplyController::class, 'show']);
 Route::delete('apply/{uuid}', [CarApplyController::class, 'destroy']);
 
