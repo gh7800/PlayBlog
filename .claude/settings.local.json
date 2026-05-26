@@ -32,7 +32,8 @@
       "Bash(awk '{print $2, $3}')",
       "Bash(awk '{ *)",
       "Bash(export LANG=C)",
-      "Bash(awk NR>=127 && NR<=161 *)"
+      "Bash(awk NR>=127 && NR<=161 *)",
+      "Bash(composer require *)"
     ],
     "deny": [
       "Bash(git add *)",

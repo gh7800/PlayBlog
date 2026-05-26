@@ -127,11 +127,11 @@ class OrganizationService
         return $department->delete();
     }
 
-    private static function deleteChildrenDepartments(int $parentId): void
+    private static function deleteChildrenDepartments(string $parentId): void
     {
         $children = Department::where('parent_id', $parentId)->get();
         foreach ($children as $child) {
-            self::deleteChildrenDepartments($child->id);
+            self::deleteChildrenDepartments($child->uuid);
             $child->delete();
         }
     }
@@ -169,6 +169,7 @@ class OrganizationService
                 ->get();
 
             $data = [
+                'id' => $department->id,
                 'uuid' => $department->uuid,
                 'name' => $department->name,
                 'company_uuid' => $department->company_uuid,

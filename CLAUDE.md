@@ -4,20 +4,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a **Laravel 7.x REST API** project (PHP 7.2.5+/8.0+) with modular architecture. Uses Composer for PHP dependencies and npm for frontend assets.
+**Laravel 8.83 REST API** project (PHP ^7.4|^8.0) with modular architecture. Primary UUIDs throughout the database.
 
 ## Common Commands
 
 ```bash
-# Development server
+# Development
 php artisan serve
+php artisan route:list                     # List all API routes
 
-# Migrations (blogDb is the primary database)
+# Migrations (blogDb is primary)
 php artisan migrate --path=database/migrations/blogDb --database=mysql
-php artisan migrate:status
-php artisan migrate:rollback
+php artisan migrate:status --database=mysql
+php artisan migrate:rollback --database=mysql
+php artisan make:migration --path=database/migrations/blogDb
 
-# Clear caches
+# Cache
 php artisan config:clear
 php artisan cache:clear
 php artisan route:clear
@@ -25,39 +27,41 @@ php artisan view:clear
 
 # Composer
 composer install
-composer update
 composer dump-autoload
 
 # Frontend (Vue.js with Laravel Mix)
-npm run dev        # Development build
-npm run watch      # Watch mode
-npm run prod       # Production build
+npm run dev
+npm run watch
+npm run prod
+
+# Logs
+tail -f storage/logs/laravel.log
 ```
 
 ## Architecture
 
 ### Directory Structure
-- `app/` - Core Laravel application (Controllers, Middleware, Providers, Services)
-- `module/` - **Custom modular packages** - each is self-contained with Controllers, Models, Services, Repository, migrations, and routes
-- `plugin/` - Additional plugins (e.g., `car/`)
-- `config/` - Laravel configuration files
-- `routes/` - Route files (api.php, web.php, auth.php, etc.)
-- `database/migrations/blogDb/` - Blog database migrations
-- `database/migrations/fileDb/` - File database migrations (configured but unused)
+- `app/` - Core Laravel: `Http/` (Controllers, Middleware, Requests, Resources), `Models/`, `Services/`, `Helpers/`, `Exceptions/`, `Providers/`, `Console/`
+- `module/` - **Self-contained packages** with their own ServiceProvider, Controllers, Models, Services, migrations, and routes
+- `plugin/car/` - Additional plugin (separate from `module/Car/`)
+- `routes/` - Route files (api.php, web.php, auth.php)
+- `database/migrations/` - Migrations for `blogDb`, `fileDb`, plus global migrations
 
-### Custom Module System
-Modules in `module/` are self-registering packages. Each module provides its own:
-- ServiceProvider that auto-loads routes from `api.php` and migrations from `db/` or `DB/`
-- Routes prefixed in `routes/api.php` (e.g., `api/document`, `api/car`)
-- Authentication via `auth:sanctum` middleware
+### Module System
+Modules in `module/` auto-register via their ServiceProvider:
+- Routes loaded from `api.php` with auth:sanctum middleware
+- Migrations auto-discovered from `db/` or `DB/` directories
 
-**Known modules:**
-- `module/Document/` - Document workflow with approval flows (DocumentService.php)
+**Modules:**
 - `module/Car/` - Car management API
+- `module/Document/` - Document workflow with approval flows
+- `module/Notice/` - Notifications
+- `module/Seal/` - Seal/Stamp management
 
 ### Database
-- Primary database: `blogDb`
-- Secondary database: `fileDb` (configured but not actively used)
+- Primary: `blogDb` (connection: `mysql`)
+- All tables use UUID primary keys
+- Standard fields: `uuid`, `status` (default 0 = normal), `created_at`, `updated_at`, `deleted_at`
 - Timezone: PRC | Locale: zh-cn
 
 ### Authentication
@@ -65,10 +69,22 @@ Modules in `module/` are self-registering packages. Each module provides its own
 - Protected routes use `auth:sanctum` middleware
 
 ### Key Dependencies
-- `jpush/jpush` - JPush notification service
-- `shineiot/framework7` - Framework7 mobile app framework
+- `laravel/sanctum` - API auth
+- `jpush/jpush` - JPush push notifications
+- `phpoffice/phpword` - Word document generation
 - `guzzlehttp/guzzle` - HTTP client
+- `doctrine/dbal` - DBAL for migration operations
+- `symfony/uid` - UUID generation
+- `shineiot/framework7` - Framework7 mobile framework
 
 ## Testing
-- PHPUnit configuration in `phpunit.xml`
-- Tests in `tests/Feature/` and `tests/Unit/`
+```bash
+./vendor/bin/phpunit
+```
+
+## Conventions
+- All queries use UUID for lookups, not auto-increment IDs
+- Models use `uuid` as primary key (string type, not incrementing)
+- Service layer handles business logic; controllers are thin
+- Soft deletes via `deleted_at` on all tables
+- Status field default 0 = normal/active

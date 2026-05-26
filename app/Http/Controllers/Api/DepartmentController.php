@@ -47,26 +47,28 @@ class DepartmentController extends ApiController
     public function store(Request $request): JsonResponse
     {
         $user = $request->user();
-        $user_uuid = $user->uuid;
-        if (!PermissionService::userHasPermission($user_uuid, 'organization_admin')) {
-            return $this->error("无管理权限_$user_uuid");
+        if (!PermissionService::userHasPermission($user->uuid, 'organization_admin')) {
+            return $this->error('无管理权限');
         }
 
         $validate = $request->validate([
             'name' => 'required|string|max:255',
-            'company_uuid' => 'required|string',
-            'parent_id' => 'nullable|integer',
+            'company_uuid' => 'nullable|string',
+            'parent_id' => 'nullable|string',
             'leader_id' => 'nullable|string',
             'status' => 'nullable|integer|in:0,1',
             'sort' => 'nullable|integer|min:0',
         ], [
             'name.required' => '请填写部门名称',
             'name.max' => '部门名称最多255个字符',
-            'company_uuid.required' => '请选择所属公司',
             'status.in' => '状态值不正确',
             'sort.integer' => '排序值必须是整数',
             'sort.min' => '排序值不能为负数',
         ]);
+
+        if (empty($validate['company_uuid'])) {
+            $validate['company_uuid'] = $user->company_uuid;
+        }
 
         try {
             $department = OrganizationService::createDepartment($validate);
@@ -99,7 +101,7 @@ class DepartmentController extends ApiController
 
         $validate = $request->validate([
             'name' => 'nullable|string|max:255',
-            'parent_id' => 'nullable|integer',
+            'parent_id' => 'nullable|string',
             'leader_id' => 'nullable|string',
             'status' => 'nullable|integer|in:0,1',
             'sort' => 'nullable|integer|min:0',

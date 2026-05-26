@@ -3,6 +3,7 @@
 namespace Module\Car\API;
 
 use App\Http\Controllers\ApiController;
+use App\Services\PermissionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -23,6 +24,11 @@ class CarApplyController extends ApiController
      */
     public function store(Request $request): JsonResponse
     {
+        $user = $request->user();
+        if (!PermissionService::userHasPermission($user->uuid, 'car_admin')) {
+            return $this->error('无管理权限');
+        }
+
         $validate = $request->validate([
             'car_type' => 'required|in:general,business,other',
             'reason' => 'required|string',

@@ -55,12 +55,12 @@ class Department extends Model
 
     public function parent(): BelongsTo
     {
-        return $this->belongsTo(Department::class, 'parent_id');
+        return $this->belongsTo(Department::class, 'parent_id', 'uuid');
     }
 
     public function children(): HasMany
     {
-        return $this->hasMany(Department::class, 'parent_id');
+        return $this->hasMany(Department::class, 'parent_id', 'uuid');
     }
 
     public function leader(): BelongsTo
