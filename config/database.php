@@ -63,6 +63,27 @@ return [
             ]) : [],
         ],
 
+        //远程应用数据库
+        'app' => [
+            'driver' => 'mysql',
+            'url' => env('DATABASE_URL'),
+            'host' => env('DB_HOST_APP', '47.93.14.46'),
+            'port' => env('DB_PORT_APP', '3306'),
+            'database' => env('DB_DATABASE_APP', 'app_db'),
+            'username' => env('DB_USERNAME_APP', 'app_user'),
+            'password' => env('DB_PASSWORD_APP', 'app_pass'),
+            'unix_socket' => env('DB_SOCKET', ''),
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'strict' => true,
+            'engine' => null,
+            'options' => extension_loaded('pdo_mysql') ? array_filter([
+                PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+            ]) : [],
+        ],
+
         //隐藏文件数据库
         /*'mysql_file' => [
             'driver' => 'mysql',

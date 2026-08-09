@@ -33,7 +33,9 @@
       "Bash(awk '{ *)",
       "Bash(export LANG=C)",
       "Bash(awk NR>=127 && NR<=161 *)",
-      "Bash(composer require *)"
+      "Bash(composer require *)",
+      "Bash(grep -v \"^.*//\")",
+      "Bash(powershell -Command \"Compress-Archive -Path 'D:\\\\webProject\\\\PlayBlog\\\\vendor' -DestinationPath 'D:\\\\webProject\\\\PlayBlog\\\\vendor.zip' -Force\")"
     ],
     "deny": [
       "Bash(git add *)",

@@ -54,6 +54,49 @@ class LoginController extends ApiController
         ]));
     }
 
+    public function register(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'username' => 'bail|required|between:4,16|alpha_num',
+            'password' => 'bail|required|between:4,16|alpha_num',
+        ], [
+            'username.between' => '用户名长度4-16位',
+            'username.required' => '请输入用户名',
+            'username.alpha_num' => '只能输入字母、数字',
+            'password.between' => '密码长度4-16位',
+            'password.required' => '请输入密码',
+            'password.alpha_num' => '只能输入字母、数字',
+        ]);
+
+        $username = $validated['username'];
+
+        // 用户名唯一性（含软删除，与 addUser 一致）
+        if (BlogUser::withTrashed()->where('username', $username)->exists()) {
+            return $this->error('用户名已存在', ['username' => $username]);
+        }
+
+        // 创建用户，组织归属留空由管理员后台分配
+        $user = BlogUser::create([
+            'username' => $username,
+            'password' => Hash::make($validated['password']),
+            'real_name' => $request->input('real_name', $username),
+            'phone' => $request->input('phone'),
+            'email' => $request->input('email'),
+            'address' => $request->input('address'),
+            'status' => 1,
+        ]);
+
+        // 注册即自动登录：复用 login 的设备判断 + token 生成
+        $deviceType = DeviceHelper::getDeviceType($request->userAgent());
+        $token = $user->createToken($deviceType)->plainTextToken;
+
+        return $this->success(array_merge($user->fresh()->toArray(), [
+            'token' => $token,
+            'device' => $deviceType,
+            'permissions' => PermissionService::getUserPermissionCodes($user->uuid),
+        ]));
+    }
+
     public function logout(Request $request): JsonResponse
     {
         $request->user()->currentAccessToken()->delete();
