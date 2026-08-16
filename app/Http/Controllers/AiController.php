@@ -44,7 +44,7 @@ class AiController extends ApiController
         // 2) 组装 DeepSeek 请求（OpenAI 兼容协议）
         $apiKey  = env('DEEPSEEK_API_KEY');
         $baseUrl = rtrim(env('DEEPSEEK_BASE_URL', 'https://api.deepseek.com/v1'), '/');
-        $model   = env('DEEPSEEK_MODEL', 'deepseek-v4-frash');
+        $model   = env('DEEPSEEK_MODEL', 'deepseek-v4-flash');
 
         $payload = [
             'model'    => $model,
@@ -119,40 +119,102 @@ class AiController extends ApiController
     }
 
     /**
-     * 从白名单业务表中检索与问题相关的行（只读、参数化、限行）。
-     * 表不存在或无匹配则静默跳过，绝不抛错中断对话。
+     * 构建数据库上下文，注入系统提示词。
+     * 设计要点：
+     *  1) 始终注入“业务表清单 + 各表数据量”总览，让模型能回答“有哪些表 / 各表多少条数据”。
+     *  2) 再把问题中的关键词拿到白名单表里做 LIKE 检索，注入命中的样例记录。
+     *  3) 任何一步失败都记日志（\Log::error），不再静默吞掉，便于排查。
+     *  4) 仅白名单表、只读、参数化查询。
      */
     protected function retrieveContext(string $q): string
     {
-        $conn = DB::connection('app');
-        $like = '%' . $q . '%';
+        $conn   = DB::connection('app');
         $pieces = [];
 
-        foreach ($this->allowedTables as $table) {
-            try {
-                $cols = Schema::connection('app')->getColumnListing($table);
-            } catch (\Throwable $e) {
-                continue; // 表不存在则跳过
+        // —— A) 表清单 + 数据量总览（始终注入）——
+        try {
+            $tables = $conn->select('SHOW TABLES');
+            $counts = [];
+            foreach ($tables as $t) {
+                $name = array_values((array) $t)[0] ?? null;
+                if ($name === null || !in_array($name, $this->allowedTables, true)) {
+                    continue;
+                }
+                try {
+                    $cnt = $conn->select("SELECT COUNT(*) AS c FROM `{$name}`");
+                    $n   = $cnt[0]->c ?? 0;
+                } catch (\Throwable $e) {
+                    $n = '?';
+                    \Log::error("AiController 统计表 {$name} 行数失败: " . $e->getMessage());
+                }
+                $counts[] = "{$name}({$n})";
             }
-            if (empty($cols)) {
-                continue;
+            if ($counts) {
+                $pieces[] = "【业务表及数据量】\n" . implode('，', $counts);
             }
+        } catch (\Throwable $e) {
+            \Log::error('AiController 获取表清单失败: ' . $e->getMessage());
+        }
 
-            $wheres = array_map(fn($c) => "`{$c}` LIKE ?", $cols);
-            $sql    = "SELECT * FROM `{$table}` WHERE " . implode(' OR ', $wheres) . " LIMIT 5";
-            $params = array_fill(0, count($cols), $like);
-
-            try {
-                $rows = $conn->select($sql, $params);
-            } catch (\Throwable $e) {
-                continue;
-            }
-
-            if (!empty($rows)) {
-                $pieces[] = "【表 {$table}】\n" . json_encode($rows, JSON_UNESCAPED_UNICODE);
+        // —— B) 关键词检索：把问题拆词后到白名单表做 LIKE，注入命中样例 ——
+        $keywords = $this->extractKeywords($q);
+        if ($keywords) {
+            foreach ($this->allowedTables as $table) {
+                try {
+                    $cols = Schema::connection('app')->getColumnListing($table);
+                } catch (\Throwable $e) {
+                    continue;
+                }
+                if (empty($cols)) {
+                    continue;
+                }
+                $wheres = [];
+                $params = [];
+                foreach ($cols as $c) {
+                    foreach ($keywords as $k) {
+                        $wheres[] = "`{$c}` LIKE ?";
+                        $params[] = '%' . $k . '%';
+                    }
+                }
+                $sql = "SELECT * FROM `{$table}` WHERE (" . implode(' OR ', $wheres) . ") LIMIT 5";
+                try {
+                    $rows = $conn->select($sql, $params);
+                } catch (\Throwable $e) {
+                    \Log::error("AiController 检索表 {$table} 失败: " . $e->getMessage());
+                    continue;
+                }
+                if (!empty($rows)) {
+                    $pieces[] = "【表 {$table} 相关记录】\n" . json_encode($rows, JSON_UNESCAPED_UNICODE);
+                }
             }
         }
 
-        return $pieces ? implode("\n\n", $pieces) : '（数据库中未找到与问题相关的业务数据）';
+        if (!$pieces) {
+            return '（数据库当前没有与问题匹配的业务数据）';
+        }
+        return implode("\n\n", $pieces);
+    }
+
+    /**
+     * 从用户问题中提取检索关键词。
+     * 中文按整句兜底（中文无空格分词），同时按非字母数字切分保留有意义的词（≥2字），
+     * 过滤常见停用词，避免把“的/了/什么”之类拿去 LIKE。
+     */
+    protected function extractKeywords(string $q): array
+    {
+        $q = preg_replace('/[^\p{L}\p{N}]+/u', ' ', $q);
+        $q = trim($q);
+        if ($q === '') {
+            return [];
+        }
+        $stop = ['的', '了', '吗', '呢', '是', '有', '在', '和', '与', '及', '各', '表', '数据',
+                 '多少', '查询', '请问', '告诉', '我', '你', '什么', '哪些', '怎么', '如何',
+                 '里面', '当前', '现在', '一下', '一个', '这条', '那条'];
+        $tokens = array_filter(
+            explode(' ', $q),
+            fn($t) => mb_strlen($t) >= 2 && !in_array($t, $stop, true)
+        );
+        $tokens[] = $q; // 整句兜底，提升中文召回
+        return array_values(array_unique($tokens));
     }
 }
