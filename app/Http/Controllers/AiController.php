@@ -94,7 +94,7 @@ class AiController extends ApiController
                         $data = trim(substr($line, 5));
                         if ($data === '[DONE]') {
                             echo "data: [DONE]\n\n";
-                            ob_flush();
+                            if (ob_get_level() > 0) { ob_flush(); }
                             flush();
                             continue;
                         }
@@ -105,14 +105,14 @@ class AiController extends ApiController
                         $token = $json['choices'][0]['delta']['content'] ?? '';
                         if ($token !== '') {
                             echo "data: " . json_encode(['token' => $token], JSON_UNESCAPED_UNICODE) . "\n\n";
-                            ob_flush();
+                            if (ob_get_level() > 0) { ob_flush(); }
                             flush();
                         }
                     }
                 }
             } catch (\Throwable $e) {
                 echo "data: " . json_encode(['error' => $e->getMessage()]) . "\n\n";
-                ob_flush();
+                if (ob_get_level() > 0) { ob_flush(); }
                 flush();
             }
         }, 200, $headers);
