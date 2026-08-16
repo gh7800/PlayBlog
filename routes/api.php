@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AiController;
 use App\Http\Controllers\FileController;
 use App\Http\Controllers\UserController;
 use App\Services\JPush\PushController;
@@ -37,6 +38,9 @@ Route::get('home', function () {
 });
 
 Route::post('/push', [PushController::class, 'sendPush']);
+
+// AI 助理：流式对话（SSE）。前端会带 Bearer token；如需强制登录可加 ->middleware('auth:sanctum')
+Route::post('/ai/chat', [AiController::class, 'chat']);
 
 require __DIR__ . '/organization.php';
 
