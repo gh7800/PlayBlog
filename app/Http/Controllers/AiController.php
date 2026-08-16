@@ -77,8 +77,13 @@ class AiController extends ApiController
                     'timeout' => 120,
                 ]);
 
+                $body = $response->getBody();
                 $buffer = '';
-                foreach ($response->getBody() as $chunk) {
+                while (!$body->eof()) {
+                    $chunk = $body->read(8192);
+                    if ($chunk === false || $chunk === '') {
+                        continue;
+                    }
                     $buffer .= $chunk;
                     while (($pos = strpos($buffer, "\n")) !== false) {
                         $line  = trim(substr($buffer, 0, $pos));
