@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Log;
 use Module\Car\Enums\CarStatus;
 use Module\Car\Jobs\CarAutoApproveJob;
 use Module\Car\Models\CarApplication;
+use Module\Car\Models\CarApprovalNode;
 use Module\Car\Models\CarPlate;
 use Module\Car\Services\CarApprovalService;
 use PhpOffice\PhpWord\PhpWord;
@@ -40,6 +41,17 @@ class CarService
 
         $application = CarApplication::create($data);
 
+        // 先记录提交申请日志，避免同步队列(sync)下自动审批先于本日志执行，
+        // 导致日志顺序错乱（自动同意出现在提交申请之前）
+        $application->logs()->create([
+            'user_uuid' => $user->uuid,
+            'user_name' => $user->real_name,
+            'status' => CarStatus::APPLYING,
+            'status_title' => '提交申请',
+            'result' => 1,
+            'step' => 1,
+        ]);
+
         // 创建待办给当前节点审批人
         $this->createApproverTaskByNode($application, $user);
 
@@ -52,17 +64,18 @@ class CarService
             ['step' => $nextStep, 'text' => '同意'],
         ]);
 
-        // 记录日志
-        $application->logs()->create([
-            'user_uuid' => $user->uuid,
-            'user_name' => $user->real_name,
-            'status' => CarStatus::APPLYING,
-            'status_title' => '提交申请',
-            'result' => 1,
-            'step' => 1,
-        ]);
-
         return $application->load(['logs', 'taskLogs', 'next']);
+    }
+
+    /**
+     * 获取节点实际可用的审批人（账号存在且未被软删）
+     */
+    private function getAvailableApprovers(CarApprovalNode $node, $applicant): array
+    {
+        $approverUuids = $node->getApproverUuids($applicant);
+        return array_values(array_filter($approverUuids, function ($userUuid) {
+            return BlogUser::where('uuid', $userUuid)->exists();
+        }));
     }
 
     /**
@@ -77,26 +90,46 @@ class CarService
             Log::warning('createApproverTaskByNode: no active node found', [
                 'application_id' => $application->id,
             ]);
-            return;
+            return false;
         }
 
         $approverUuids = $node->getApproverUuids($applicant);
 
+        $created = false;
         foreach ($approverUuids as $userUuid) {
             $user = BlogUser::where('uuid', $userUuid)->first();
+            if (!$user) {
+                // 审批人账号不存在（已删除/软删），跳过避免致命错误
+                Log::warning('createApproverTaskByNode: approver user not found, skip', [
+                    'application_id' => $application->id,
+                    'user_uuid' => $userUuid,
+                ]);
+                continue;
+            }
             $application->taskLogs()->create([
                 'user_uuid' => $userUuid,
                 'user_name' => $user->real_name ?? '',
                 'status' => CarStatus::APPLYING,
                 'status_title' => CarStatus::getStatusTitle(CarStatus::APPLYING),
             ]);
+            $created = true;
         }
 
-        // 部长审批节点：分发延迟2分钟的自动审批任务
-        if ($node->approver_type === 'dept_head') {
+        if (!$created) {
+            Log::warning('createApproverTaskByNode: no approver found for node', [
+                'application_id' => $application->id,
+                'step' => $application->step,
+                'approver_type' => $node->approver_type,
+            ]);
+        }
+
+        // 部长审批节点：分发延迟2分钟的自动审批任务（总开关，见 config/car.php）
+        if ($node->approver_type === 'dept_head' && config('car.auto_approve_enabled')) {
             CarAutoApproveJob::dispatch($application->uuid, $application->step)
                 ->delay(now()->addMinutes(2));
         }
+
+        return $created;
     }
 
     /**
@@ -127,7 +160,9 @@ class CarService
                 if (!$plateId) {
                     throw new \Exception('同意时必须选择车牌');
                 }
-                $plate = CarPlate::where('uuid', $plateId)->firstOrFail();
+                // 只允许分配当前空闲车牌，并立即标记占用，防止同一辆车重复分配
+                $plate = CarPlate::where('uuid', $plateId)->where('status', 0)->firstOrFail();
+                $plate->update(['status' => 1]);
 
                 $application->update([
                     'status' => CarStatus::APPROVED,
@@ -165,6 +200,12 @@ class CarService
 
             } else {
                 // 非最后节点 - 推进到下一节点
+                // 先确认下一节点有可用审批人，再推进，避免推进后无人可批产生幽灵单
+                $nextNode = $approverService->getNextNode($application);
+                if ($nextNode && empty($this->getAvailableApprovers($nextNode, $application->user))) {
+                    throw new \Exception('下一节点未找到审批人，无法继续审批');
+                }
+
                 $application->update([
                     'step' => $nextStep,
                 ]);
@@ -238,6 +279,12 @@ class CarService
 
         $nextStep = $approverService->getNextStep($application);
 
+        // 先校验下一节点有可用审批人，再推进，避免推进后无审批人产生幽灵单
+        $nextNode = $approverService->getNextNode($application);
+        if ($nextNode && empty($this->getAvailableApprovers($nextNode, $application->user))) {
+            throw new \Exception('下一节点未找到审批人，无法继续自动审批');
+        }
+
         // 推进到下一节点
         $application->update([
             'step' => $nextStep,
@@ -258,7 +305,11 @@ class CarService
 
         // 清除当前待办，为下一节点创建待办
         $application->taskLogs()->forceDelete();
-        $this->createApproverTaskByNode($application, $application->user);
+        $nextNodeHasApprover = $this->createApproverTaskByNode($application, $application->user);
+        if (!$nextNodeHasApprover) {
+            // 下一节点未找到审批人：直接报错，避免申请变成无人审批的幽灵单
+            throw new \Exception('下一节点未找到审批人，无法继续自动审批');
+        }
 
         // 更新next记录
         $application->next()->delete();

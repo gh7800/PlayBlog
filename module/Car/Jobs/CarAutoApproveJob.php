@@ -6,6 +6,7 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Support\Facades\Log;
 use Module\Car\Models\CarApplication;
 use Module\Car\Services\CarService;
 
@@ -33,6 +34,14 @@ class CarAutoApproveJob implements ShouldQueue
             return;
         }
 
-        (new CarService())->autoApprove($application);
+        try {
+            (new CarService())->autoApprove($application);
+        } catch (\Exception $e) {
+            // 自动审批失败（如下一节点未找到审批人），记录错误日志，不再静默卡死
+            Log::error('CarAutoApproveJob failed: ' . $e->getMessage(), [
+                'application_uuid' => $this->applicationUuid,
+                'step' => $this->step,
+            ]);
+        }
     }
 }
