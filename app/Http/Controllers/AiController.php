@@ -147,7 +147,14 @@ class AiController extends ApiController
                     $n = '?';
                     \Log::error("AiController 统计表 {$name} 行数失败: " . $e->getMessage());
                 }
-                $counts[] = "{$name}({$n})";
+                // 注入字段清单，让模型能回答“某表有哪些字段 / 字段含义”
+                try {
+                    $colList = Schema::connection('app')->getColumnListing($name);
+                    $colStr  = implode(',', $colList);
+                } catch (\Throwable $e) {
+                    $colStr = '?';
+                }
+                $counts[] = "{$name}({$n}) 字段:{$colStr}";
             }
             if ($counts) {
                 $pieces[] = "【业务表及数据量】\n" . implode('，', $counts);
@@ -197,24 +204,54 @@ class AiController extends ApiController
 
     /**
      * 从用户问题中提取检索关键词。
-     * 中文按整句兜底（中文无空格分词），同时按非字母数字切分保留有意义的词（≥2字），
-     * 过滤常见停用词，避免把“的/了/什么”之类拿去 LIKE。
+     * 设计要点（修复“查不出数据”问题）：
+     *  1) 去掉“整句兜底”——中文整句永远比字段值长，拿去 LIKE 会 0 命中。
+     *  2) 识别“X等于Y / X是Y / X为Y / X叫Y”结构，把 Y 作为强关键词（值部分）。
+     *  3) 中文无空格分词，改用 2-gram 滑窗补强短语召回。
+     *  4) 过滤常见停用词，避免把“的/了/什么”之类拿去 LIKE。
      */
     protected function extractKeywords(string $q): array
     {
-        $q = preg_replace('/[^\p{L}\p{N}]+/u', ' ', $q);
         $q = trim($q);
         if ($q === '') {
             return [];
         }
+
         $stop = ['的', '了', '吗', '呢', '是', '有', '在', '和', '与', '及', '各', '表', '数据',
                  '多少', '查询', '请问', '告诉', '我', '你', '什么', '哪些', '怎么', '如何',
-                 '里面', '当前', '现在', '一下', '一个', '这条', '那条'];
-        $tokens = array_filter(
-            explode(' ', $q),
-            fn($t) => mb_strlen($t) >= 2 && !in_array($t, $stop, true)
-        );
-        $tokens[] = $q; // 整句兜底，提升中文召回
-        return array_values(array_unique($tokens));
+                 '里面', '当前', '现在', '一下', '一个', '这条', '那条', '查下', '这个', '那个'];
+
+        $keywords = [];
+
+        // 1) 结构化提取：“X等于Y / X是Y / X为Y / X叫Y” → 取 Y 作为强关键词
+        if (preg_match('/(?:等于|是|为|叫)(.+)$/u', $q, $m)) {
+            $v = preg_replace('/[的这个那条那了]+$/u', '', trim($m[1]));
+            if ($v !== '' && mb_strlen($v) >= 2) {
+                $keywords[] = $v;
+            }
+        }
+
+        // 2) 通用切词：按标点/空白切分，过滤停用词与过长的整句（>12 字视为整句丢弃）
+        $parts = preg_split('/[\s,，;；、。！？!?]+/u', $q);
+        foreach ($parts as $t) {
+            $t = trim($t);
+            $len = mb_strlen($t);
+            if ($t === '' || $len < 2 || $len > 12 || in_array($t, $stop, true)) {
+                continue;
+            }
+            $keywords[] = $t;
+        }
+
+        // 3) 2-gram 滑窗补强中文短语召回（限前 40 个，避免 SQL 过大）
+        $chars = preg_split('//u', $q, -1, PREG_SPLIT_NO_EMPTY);
+        $n = count($chars);
+        for ($i = 0; $i < $n - 1 && $i < 40; $i++) {
+            $bg = $chars[$i] . $chars[$i + 1];
+            if (mb_strlen($bg) >= 2 && !in_array($bg, $stop, true)) {
+                $keywords[] = $bg;
+            }
+        }
+
+        return array_values(array_unique(array_filter($keywords)));
     }
 }
