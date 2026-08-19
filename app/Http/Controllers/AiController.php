@@ -25,6 +25,25 @@ class AiController extends ApiController
     ];
 
     /**
+     * 可统计项配置：业务别名 → 可分组字段（人工维护，杜绝任意 SQL）。
+     * 命中统计类问题后，按此配置执行 GROUP BY 聚合，并生成 ECharts option。
+     */
+    protected $statFields = [
+        'car_applications' => [
+            'aliases' => ['用车'],
+            'fields'  => ['status' => '状态', 'applicant_name' => '申请人'],
+        ],
+        'documents' => [
+            'aliases' => ['公文'],
+            'fields'  => ['doc_type' => '类型', 'status' => '状态'],
+        ],
+        'notice_notices' => [
+            'aliases' => ['通知'],
+            'fields'  => ['notice_type' => '类型', 'status' => '状态'],
+        ],
+    ];
+
+    /**
      * POST /api/ai/chat
      * 请求体：{ "message": "用户问题" }
      * 响应：text/event-stream，逐行 data: {"token":"..."}，结束 data: [DONE]
@@ -36,8 +55,16 @@ class AiController extends ApiController
             return $this->error('请输入问题');
         }
 
-        // 1) 从白名单业务表检索与问题相关的内容，注入系统提示词
+        // 1) 统计意图识别：命中则先取真实聚合数据，构造图表配置
+        $chart = $this->buildChartIfStatQuestion($question);
+
+        // 2) 从白名单业务表检索与问题相关的内容，注入系统提示词
         $dbCtx = $this->retrieveContext($question);
+        if ($chart) {
+            // 聚合结果也注入，让 AI 做文字总结（数量 + 占比）
+            $dbCtx .= "\n\n【统计数据】" . json_encode($chart['rows'], JSON_UNESCAPED_UNICODE)
+                . "\n请用自然语言总结这份统计数据，说明各项数量与占比，不要编造。";
+        }
         $system = "你是企业移动办公系统的智能助理，只能依据下方【数据库内容】回答用户问题，"
             . "不知道或内容里没有的就如实说不知道，不要编造。\n【数据库内容】\n" . $dbCtx;
 
@@ -65,8 +92,14 @@ class AiController extends ApiController
         $client = new Client();
 
         // 3) 以 SSE 流式把 DeepSeek 的 token 透传给前端
-        return response()->stream(function () use ($client, $apiKey, $baseUrl, $payload) {
+        return response()->stream(function () use ($client, $apiKey, $baseUrl, $payload, $chart) {
             try {
+                // 0) 统计类问题：先把图表配置一次性发给前端（数据真实来自 GROUP BY）
+                if ($chart) {
+                    echo "data: " . json_encode(['chart' => $chart['option']], JSON_UNESCAPED_UNICODE) . "\n\n";
+                    if (ob_get_level() > 0) { ob_flush(); }
+                    flush();
+                }
                 $response = $client->post($baseUrl . '/chat/completions', [
                     'headers' => [
                         'Authorization' => 'Bearer ' . $apiKey,
@@ -116,6 +149,64 @@ class AiController extends ApiController
                 flush();
             }
         }, 200, $headers);
+    }
+
+    /**
+     * 统计意图识别：命中"分布/占比/多少条"等词，且能从问题中定位业务+分组字段时，
+     * 执行真实 GROUP BY 聚合，返回 ECharts option 与原始行数据（供提示词注入）。
+     * 未命中或执行失败返回 null（走普通问答，不影响原流程）。
+     * 图表类型：问题含"柱状/条形/bar"出柱状图，否则默认饼图。
+     */
+    protected function buildChartIfStatQuestion(string $q): ?array
+    {
+        if (!preg_match('/(分布|占比|统计|比例|多少条|有几个|饼图|柱状|条形)/u', $q)) {
+            return null;
+        }
+
+        foreach ($this->statFields as $table => $cfg) {
+            foreach ($cfg['aliases'] as $alias) {
+                if (mb_strpos($q, $alias) === false) {
+                    continue;
+                }
+                foreach ($cfg['fields'] as $col => $label) {
+                    if (mb_strpos($q, $label) === false) {
+                        continue;
+                    }
+                    try {
+                        $rows = DB::connection('app')->table($table)
+                            ->select("{$col} as name", DB::raw('COUNT(*) as value'))
+                            ->groupBy($col)
+                            ->get();
+                    } catch (\Throwable $e) {
+                        \Log::error("AiController 统计表 {$table} 字段 {$col} 失败: " . $e->getMessage());
+                        return null;
+                    }
+                    if ($rows->isEmpty()) {
+                        return null;
+                    }
+
+                    $isBar = preg_match('/(柱状|条形|bar)/u', $q) === 1;
+                    $option = [
+                        'title'   => ['text' => "{$alias}按{$label}分布", 'left' => 'center'],
+                        'tooltip' => ['trigger' => $isBar ? 'axis' : 'item'],
+                    ];
+                    if ($isBar) {
+                        $option['xAxis']  = ['type' => 'category', 'data' => $rows->pluck('name')->all()];
+                        $option['yAxis']  = ['type' => 'value'];
+                        $option['series'] = [['type' => 'bar', 'barWidth' => 40, 'data' => $rows->pluck('value')->all()]];
+                    } else {
+                        $option['legend'] = ['bottom' => 0];
+                        $option['series'] = [['type' => 'pie', 'radius' => '60%', 'data' => $rows->map(fn($r) => ['name' => (string) $r->name, 'value' => (int) $r->value])->values()->all()]];
+                    }
+
+                    return [
+                        'rows'   => $rows->map(fn($r) => ['name' => (string) $r->name, 'value' => (int) $r->value])->values()->all(),
+                        'option' => $option,
+                    ];
+                }
+            }
+        }
+        return null;
     }
 
     /**
