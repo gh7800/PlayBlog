@@ -58,6 +58,9 @@ class AiController extends ApiController
         // 1) 统计意图识别：命中则先取真实聚合数据，构造图表配置
         $chart = $this->buildChartIfStatQuestion($question);
 
+        // 1.5) 导出意图识别：命中则在流里推 action 事件，前端渲染动作卡片
+        $action = $this->detectExportAction($question);
+
         // 2) 从白名单业务表检索与问题相关的内容，注入系统提示词
         $dbCtx = $this->retrieveContext($question);
         if ($chart) {
@@ -67,6 +70,10 @@ class AiController extends ApiController
         }
         $system = "你是企业移动办公系统的智能助理，只能依据下方【数据库内容】回答用户问题，"
             . "不知道或内容里没有的就如实说不知道，不要编造。\n【数据库内容】\n" . $dbCtx;
+        if ($action) {
+            $system .= "\n\n【注意】本次回复下方会展示一个「" . $action['label']
+                . "」按钮卡片，请在回复末尾自然地引导用户点击该按钮完成导出，不要声称自己已经导出文件。";
+        }
 
         // 2) 组装 DeepSeek 请求（OpenAI 兼容协议）
         $apiKey  = env('DEEPSEEK_API_KEY');
@@ -92,9 +99,15 @@ class AiController extends ApiController
         $client = new Client();
 
         // 3) 以 SSE 流式把 DeepSeek 的 token 透传给前端
-        return response()->stream(function () use ($client, $apiKey, $baseUrl, $payload, $chart) {
+        return response()->stream(function () use ($client, $apiKey, $baseUrl, $payload, $chart, $action) {
             try {
-                // 0) 统计类问题：先把图表配置一次性发给前端（数据真实来自 GROUP BY）
+                // 0) 快捷动作：先把动作卡片配置一次性发给前端（前端查注册表渲染按钮）
+                if ($action) {
+                    echo "data: " . json_encode(['action' => $action], JSON_UNESCAPED_UNICODE) . "\n\n";
+                    if (ob_get_level() > 0) { ob_flush(); }
+                    flush();
+                }
+                // 0.5) 统计类问题：先把图表配置一次性发给前端（数据真实来自 GROUP BY）
                 if ($chart) {
                     echo "data: " . json_encode(['chart' => $chart['option']], JSON_UNESCAPED_UNICODE) . "\n\n";
                     if (ob_get_level() > 0) { ob_flush(); }
@@ -149,6 +162,39 @@ class AiController extends ApiController
                 flush();
             }
         }, 200, $headers);
+    }
+
+    /**
+     * 可触发的快捷动作配置：后端只发 key，前端查自己的注册表决定调用哪个接口。
+     * 这样避免"后端发什么前端就执行什么"的注入风险，实际执行权在前端注册表。
+     */
+    protected $exportActions = [
+        'exportCarApply'       => '导出全部用车数据',
+        'exportCarApproveTodo' => '导出待审批用车',
+        'exportCarApproveDone' => '导出已审批用车',
+    ];
+
+    /**
+     * 导出意图识别：问题含"导出/下载"且涉及用车/审批时，
+     * 返回 { key, label } 供前端渲染动作卡片（点击后调用 /api/car/* 导出接口）。
+     * 未命中返回 null，走普通问答流程，与 chart 事件的降级策略一致。
+     */
+    protected function detectExportAction(string $q): ?array
+    {
+        if (preg_match('/(导出|下载)/u', $q) !== 1) {
+            return null;
+        }
+
+        if (preg_match('/(待审|待处理|未审)/u', $q) === 1) {
+            return ['key' => 'exportCarApproveTodo', 'label' => $this->exportActions['exportCarApproveTodo']];
+        }
+        if (preg_match('/(已审|审批完|办结)/u', $q) === 1) {
+            return ['key' => 'exportCarApproveDone', 'label' => $this->exportActions['exportCarApproveDone']];
+        }
+        if (preg_match('/(用车|车辆|派车|审批)/u', $q) === 1) {
+            return ['key' => 'exportCarApply', 'label' => $this->exportActions['exportCarApply']];
+        }
+        return null;
     }
 
     /**
