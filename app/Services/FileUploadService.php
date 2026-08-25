@@ -29,7 +29,17 @@ class FileUploadService
             //'file_url'           => env('APP_URL').Storage::url($path),
         ];
 
-        return FileModel::create($model);
+        $model = FileModel::create($model);
+
+        // 上传成功后同步提取文本写入 file_contents 索引表（两阶段架构：上传建索引）
+        // 提取器内部吞掉所有异常（记 status=failed），这里再兜一层，绝不影响上传主流程
+        try {
+            app(FileTextExtractor::class)->index($model);
+        } catch (\Throwable $e) {
+            \Log::error("文件文本索引失败 file_id={$model->id}: " . $e->getMessage());
+        }
+
+        return $model;
     }
 
     /**

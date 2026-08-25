@@ -262,6 +262,7 @@ class AiController extends ApiController
      *  2) 再把问题中的关键词拿到白名单表里做 LIKE 检索，注入命中的样例记录。
      *  3) 任何一步失败都记日志（\Log::error），不再静默吞掉，便于排查。
      *  4) 仅白名单表、只读、参数化查询。
+     *  5) C 段单独走 file_contents 全文索引（不进白名单，避免 LIKE 扫 longtext）。
      */
     protected function retrieveContext(string $q): string
     {
@@ -333,10 +334,92 @@ class AiController extends ApiController
             }
         }
 
+        // —— C) 文件内容全文检索：file_contents 命中片段注入（token 与文件数无关）——
+        $fileCtx = $this->retrieveFileContext($q);
+        if ($fileCtx !== '') {
+            $pieces[] = $fileCtx;
+        }
+
         if (!$pieces) {
             return '（数据库当前没有与问题匹配的业务数据）';
         }
         return implode("\n\n", $pieces);
+    }
+
+    /**
+     * 文件内容检索（两阶段架构第二阶段：问答只查索引表，不读文件）。
+     * 设计要点：
+     *  1) MATCH ... AGAINST 走 file_contents 上的 FULLTEXT ngram 索引，支持中文。
+     *  2) 只取 top3 文件，每个文件只取命中关键词前后 250 字的片段，token 消耗恒定。
+     *  3) 表不存在（未迁移）/ 查询失败 / 0 命中时都返回空串，降级为普通问答，不影响原流程。
+     */
+    protected function retrieveFileContext(string $q): string
+    {
+        $keywords = $this->extractKeywords($q);
+        if (!$keywords) {
+            return '';
+        }
+
+        // MATCH 自然语言模式：多个词按 OR 命中并按相关度排序，取前 8 个关键词足够
+        $against = implode(' ', array_slice($keywords, 0, 8));
+
+        try {
+            $rows = DB::connection('app')->select(
+                "SELECT file_id, title, text FROM file_contents
+                 WHERE status = 'parsed'
+                   AND MATCH(title, text) AGAINST(? IN NATURAL LANGUAGE MODE)
+                 LIMIT 3",
+                [$against]
+            );
+        } catch (\Throwable $e) {
+            \Log::error('AiController 检索 file_contents 失败: ' . $e->getMessage());
+            return '';
+        }
+        if (empty($rows)) {
+            return '';
+        }
+
+        $lines = [];
+        foreach ($rows as $r) {
+            $snippet = $this->makeSnippet($r->text ?? '', $keywords, 250);
+            $lines[] = "文件《{$r->title}》(file_id={$r->file_id})内容片段：{$snippet}";
+        }
+        return "【文件内容检索】\n" . implode("\n", $lines);
+    }
+
+    /**
+     * 从全文中截取命中关键词附近的片段（前后各 $radius 字）。
+     * 找不到关键词（如仅文件名命中）时取开头片段兜底。
+     */
+    protected function makeSnippet(string $text, array $keywords, int $radius = 250): string
+    {
+        $text = $text ?? '';
+        if ($text === '') {
+            return '（空内容）';
+        }
+
+        $pos = false;
+        foreach ($keywords as $k) {
+            $p = mb_strpos($text, $k);
+            if ($p !== false) {
+                $pos = $p;
+                break;
+            }
+        }
+
+        // 找不到关键词：取开头 radius*2 字
+        if ($pos === false) {
+            $head = mb_substr($text, 0, $radius * 2);
+            return mb_strlen($text) > $radius * 2 ? $head . '…' : $head;
+        }
+
+        // 命中：取 pos 前后各 radius 字
+        $start = max(0, $pos - $radius);
+        $len   = $radius * 2;
+        $snippet = mb_substr($text, $start, $len);
+        $prefix  = $start > 0 ? '…' : '';
+        $suffix  = mb_strlen($text) > $start + $len ? '…' : '';
+        return $prefix . $snippet . $suffix;
     }
 
     /**

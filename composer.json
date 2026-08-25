@@ -19,6 +19,7 @@
         "laravel/tinker": "^2.5",
         "phpoffice/phpword": "^1.4",
         "shineiot/framework7": "*",
+        "smalot/pdfparser": "^2.9",
         "symfony/uid": "^5.4"
     },
     "require-dev": {
@@ -56,12 +57,6 @@
     },
     "minimum-stability": "dev",
     "prefer-stable": true,
-    "repositories": [
-        {
-            "type": "composer",
-            "url": "http://packagist.shineiot.cn"
-        }
-    ],
     "scripts": {
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
