@@ -1,6 +1,7 @@
 <?php
 namespace Module\Document\Models;
 
+use App\Models\BlogUser;
 use App\Models\Next;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Model;
@@ -23,7 +24,7 @@ class Document extends Model
         });
     }
 
-    protected $fillable = ['title','content','code','uuid','step','status','status_title','user_name','user_uuid','description'];
+    protected $fillable = ['title','content','code','type','remark','uuid','step','status','status_title','user_name','user_uuid','description'];
 
     protected $casts = [
         'step' => 'integer',
@@ -67,5 +68,13 @@ class Document extends Model
     public function taskLogs(): MorphMany
     {
         return $this->morphMany(DocumentTaskLog::class,'taskLog');
+    }
+
+    /**
+     * 申请人（用于展示单位、部门）
+     */
+    public function applicant(): BelongsTo
+    {
+        return $this->belongsTo(BlogUser::class, 'user_uuid', 'uuid');
     }
 }

@@ -3,158 +3,144 @@
 namespace Module\Document\Flow;
 
 use App\Models\BlogUser;
-use App\Models\Next;
-use App\User;
+use App\Services\PermissionService;
 use Illuminate\Http\Request;
 use Module\Document\DocumentStatus;
 use Module\Document\Models\Document;
 
 class DocumentService
 {
+    // 审批人权限组（可在权限群组管理中调整人员）
+    public const GROUP_DIRECTOR = 'role_director';   // 行政办公室主任
+    public const GROUP_CHAIRMAN = 'role_chairman';   // 董事长
+
     /**
-     * @param Request $request
-     * 审批流程
+     * 获取某步骤的审批人 uuid 列表
+     * @param int $step 2=行政办公室主任审批 3=董事长审批
+     * @return array
      */
-    function approval(Request $request)
+    public function getStepApprovers(int $step): array
     {
-        $nextData = ['驳回','同意'];
-        $user = $request->user();
-
-        $uuid = $request->input('uuid');
-        $step = $request->input('step');
-
-        $document = Document::query()->where('uuid',$uuid)->firstOrFail();
-
-        if($step == 1){ //驳回
-            $document->update(['step'=>1]);
-            $document->logs()->create([
-                'reply'=>$request->input('reply'),
-                'result' => -1,
-                'user_uuid'=>$user->uuid,
-                'user_name'=>$user->real_name,
-            ]);
-
-            $document->next()->update(['step'=>2,'text'=>'重新申请']);
-
-        }else if($step == 2){ //发送申请
-            $document->update([
-                'step'=>$step,
-                'status'=>DocumentStatus::SEND,
-                'status_title'=>DocumentStatus::getStatusTitle(DocumentStatus::SEND),
-            ]);
-
-            $document->logs()->create([
-                'reply'=>$request->input('reply',''),
-                'result' => 1,
-                'user_uuid'=>$user->uuid,
-                'user_name'=>$user->real_name,
-                'status'=> DocumentStatus::SEND,
-                'status_title'=> DocumentStatus::getStatusTitle(DocumentStatus::SEND),
-                'step'=>$step,
-            ]);
-
-            $document->taskLogs()->forceDelete();//清除关联的taskLog
-            $userList = ['8bcd7f26-f2d8-4e03-b4fa-0054379ecc29','d800951e-4f55-46cc-bc3d-c127c54a7e78'];//0002002-0002003
-            $users = BlogUser::query()->whereIn('uuid',$userList)->get();
-            foreach($users as $blogUser){
-                $document->taskLogs()->create([
-                    'user_uuid'=>$blogUser->uuid,
-                    'user_name'=>$blogUser->real_name,
-                    'status'=>DocumentStatus::RECEIVE,
-                    'status_title'=>DocumentStatus::getStatusTaskTitle(DocumentStatus::RECEIVE),
-                ]);
-            }
-
-            $document->next()->update(['step'=>DocumentStatus::getNextStep($step),'text'=>'收文']);
-
-        }else if($step == 3){ //行办收文
-            $document->update([
-                'step'=>$step,
-                'status'=>DocumentStatus::PENDING,
-                'status_title'=>DocumentStatus::getStatusTaskTitle(DocumentStatus::PENDING),
-            ]);
-
-            $document->logs()->create([
-                'reply'=>$request->input('reply',''),
-                'result' => 1,
-                'user_uuid'=>$user->uuid,
-                'user_name'=>$user->real_name,
-                'status'=> DocumentStatus::RECEIVE,
-                'status_title'=> DocumentStatus::getStatusTitle(DocumentStatus::RECEIVE),
-                'step'=>$step,
-            ]);
-
-            $document->taskLogs()->forceDelete();//清除关联的taskLog
-
-            $document->taskLogs()->create([
-                'user_uuid'=>'$2y$10$Zh23RAulpGATU7y0gjyV8.5Lx/5LsFBdTi1UGAlCwrfpwdZJEZOyG',
-                'user_name'=>'朱连杰',
-                'status'=>DocumentStatus::PENDING,
-                'status_title'=>DocumentStatus::getStatusTaskTitle(DocumentStatus::PENDING),
-            ]);
-
-            $document -> next() -> forceDelete();
-            $document->next()->createMany([
-                ['step' => DocumentStatus::getNextStep($step), 'text' => '同意'],
-                ['step' => 1, 'text' => '驳回'],
-            ]);
-
-        }else if($step == 4){ //部长审批
-            $document->update([
-                'step'=>$step,
-                'status'=>DocumentStatus::APPROVED,
-                'status_title'=>DocumentStatus::getStatusTaskTitle(DocumentStatus::APPROVED),
-            ]);
-
-            $document->logs()->create([
-                'reply'=>$request->input('reply',''),
-                'result' => 1,
-                'user_uuid'=>$user->uuid,
-                'user_name'=>$user->real_name,
-                'status'=> DocumentStatus::PENDING,
-                'status_title'=> DocumentStatus::getStatusTitle(DocumentStatus::PENDING),
-                'step'=>$step,
-            ]);
-
-            $document->taskLogs()->forceDelete();//清除关联的taskLog
-
-            $document->taskLogs()->create([
-                'user_uuid'=>'a502484e-5040-42e0-933e-1ccca37d4c12',
-                'user_name'=>'王文智',
-                'status'=>DocumentStatus::APPROVED,
-                'status_title'=>DocumentStatus::getStatusTaskTitle(DocumentStatus::APPROVED),
-            ]);
-
-            $document -> next() -> forceDelete();
-            $document->next()->createMany([
-                ['step' => DocumentStatus::getNextStep($step), 'text' => '同意'],
-                ['step' => 1, 'text' => '驳回'],
-            ]);
-        }else if($step == 5){ //分管领导审批
-            $document->update([
-                'step'=>$step,
-                'status'=>DocumentStatus::COMPLETED,
-                'status_title'=>DocumentStatus::getStatusTitle(DocumentStatus::COMPLETED),
-            ]);
-
-            $document->logs()->create([
-                'reply'=>$request->input('reply',''),
-                'result' => 1,
-                'user_uuid'=>$user->uuid,
-                'user_name'=>$user->real_name,
-                'status'=> DocumentStatus::APPROVED,
-                'status_title'=> DocumentStatus::getStatusTitle(DocumentStatus::APPROVED),
-                'step'=>$step,
-            ]);
-
-            $document->taskLogs()->forceDelete();//清除关联的taskLog
-
-            $document -> next() -> forceDelete();
-
+        $groupCode = $step === 2 ? self::GROUP_DIRECTOR : self::GROUP_CHAIRMAN;
+        $group = PermissionService::getGroup($groupCode);
+        if (!$group) {
+            return [];
         }
-
-        return $document->refresh()->load(['logs']);
+        return $group->users()->withTrashed()->get()->pluck('user_uuid')->toArray();
     }
 
+    /**
+     * 审批流程
+     * 参数：uuid（请示uuid）、action（agree=同意 / reject=驳回）、reply（意见）
+     */
+    public function approval(Request $request)
+    {
+        $user = $request->user();
+        $uuid = $request->input('uuid');
+        $action = $request->input('action', 'agree');
+        $reply = $request->input('reply', '');
 
+        $document = Document::query()->where('uuid', $uuid)->firstOrFail();
+
+        // 校验当前用户是否为当前节点的审批人（在待办 taskLogs 中）
+        $isApprover = $document->taskLogs()->where('user_uuid', $user->uuid)->exists();
+        if (!$isApprover) {
+            throw new \Exception('您不是当前审批人，无审批权限');
+        }
+
+        $currentStep = (int) $document->step;
+
+        if ($action === 'reject') { // 驳回
+            $document->update([
+                'step' => -1,
+                'status' => DocumentStatus::REJECTED,
+                'status_title' => DocumentStatus::getStatusTitle(DocumentStatus::REJECTED),
+            ]);
+
+            $document->logs()->create([
+                'reply' => $reply,
+                'result' => -1,
+                'user_uuid' => $user->uuid,
+                'user_name' => $user->real_name,
+                'status' => DocumentStatus::REJECTED,
+                'status_title' => '驳回',
+                'step' => $currentStep,
+            ]);
+
+            // 清除待办与下一步操作
+            $document->taskLogs()->forceDelete();
+            $document->next()->forceDelete();
+
+        } else if ($action === 'agree') { // 同意
+
+            if ($currentStep === 1) {
+                // 行政办公室主任同意 -> 董事长审批
+                $document->update([
+                    'step' => 2,
+                    'status' => DocumentStatus::PENDING,
+                    'status_title' => DocumentStatus::getStatusTitle(DocumentStatus::PENDING),
+                ]);
+
+                $document->logs()->create([
+                    'reply' => $reply,
+                    'result' => 1,
+                    'user_uuid' => $user->uuid,
+                    'user_name' => $user->real_name,
+                    'status' => DocumentStatus::PENDING,
+                    'status_title' => '行政办公室主任同意',
+                    'step' => $currentStep,
+                ]);
+
+                // 清除当前待办，创建董事长待办
+                $document->taskLogs()->forceDelete();
+                foreach ($this->getStepApprovers(3) as $approverUuid) {
+                    $approver = BlogUser::where('uuid', $approverUuid)->first();
+                    if (!$approver) {
+                        continue;
+                    }
+                    $document->taskLogs()->create([
+                        'user_uuid' => $approver->uuid,
+                        'user_name' => $approver->real_name ?? '',
+                        'status' => DocumentStatus::APPROVED,
+                        'status_title' => DocumentStatus::getStatusTaskTitle(DocumentStatus::APPROVED),
+                    ]);
+                }
+
+                // 更新下一步操作
+                $document->next()->forceDelete();
+                $document->next()->createMany([
+                    ['step' => 2, 'text' => '驳回'],
+                    ['step' => 3, 'text' => '同意'],
+                ]);
+
+            } else if ($currentStep === 2) {
+                // 董事长同意 -> 完成
+                $document->update([
+                    'step' => 3,
+                    'status' => DocumentStatus::COMPLETED,
+                    'status_title' => DocumentStatus::getStatusTitle(DocumentStatus::COMPLETED),
+                ]);
+
+                $document->logs()->create([
+                    'reply' => $reply,
+                    'result' => 1,
+                    'user_uuid' => $user->uuid,
+                    'user_name' => $user->real_name,
+                    'status' => DocumentStatus::COMPLETED,
+                    'status_title' => '董事长同意',
+                    'step' => $currentStep,
+                ]);
+
+                // 流程结束，清除待办与下一步操作
+                $document->taskLogs()->forceDelete();
+                $document->next()->forceDelete();
+            } else {
+                throw new \Exception('该请示已处理完成，无需重复审批');
+            }
+        } else {
+            throw new \Exception('无效的审批操作');
+        }
+
+        return $document->refresh()->load(['logs', 'next', 'taskLogs']);
+    }
 }
