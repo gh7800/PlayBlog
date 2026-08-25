@@ -7,8 +7,6 @@ use Illuminate\Support\Facades\Schema;
 class CreateFileModelsTable extends Migration
 {
 
-    protected $connection = 'mysql_file';
-
     /**
      * Run the migrations.
      *

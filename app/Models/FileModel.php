@@ -7,8 +7,6 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class FileModel extends Model
 {
-    protected $connection = 'mysql_file';
-
     public $table = 'files';
 
     protected $fillable = ['title','file_name','file_size','file_path','file_url'];

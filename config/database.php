@@ -84,7 +84,7 @@ return [
             ]) : [],
         ],
 
-        //隐藏文件数据库
+        //文件数据库连接（已合并到 app_db，弃用）
         /*'mysql_file' => [
             'driver' => 'mysql',
             'url' => env('DATABASE_URL'),

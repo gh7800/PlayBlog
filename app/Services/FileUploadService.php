@@ -29,7 +29,7 @@ class FileUploadService
             //'file_url'           => env('APP_URL').Storage::url($path),
         ];
 
-        return FileModel::on('mysql_file')->create($model);
+        return FileModel::create($model);
     }
 
     /**
