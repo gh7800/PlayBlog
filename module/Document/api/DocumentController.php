@@ -92,7 +92,7 @@ class DocumentController extends ApiController
             'type' => $validate['type'],
             'content' => $request->input('content'),
             'remark' => $request->input('remark'),
-            'code' => $request->input('code'),
+            'code' => $this->generateCode(),
             'status' => DocumentStatus::NEW,
             'status_title' => DocumentStatus::getStatusTitle(DocumentStatus::NEW),
             'user_name' => $user->real_name,
@@ -310,5 +310,18 @@ class DocumentController extends ApiController
             $document->user_department = $applicant && $applicant->department ? $applicant->department->name : '';
         }
         return $documents;
+    }
+
+    /**
+     * 生成请示编号：QS + 日期(8位) + 3位序号
+     * 例：QS20260825001
+     */
+    private function generateCode(): string
+    {
+        $prefix = 'QS' . date('Ymd');
+        $count = Document::withTrashed()
+            ->where('code', 'like', $prefix . '%')
+            ->count();
+        return $prefix . str_pad($count + 1, 3, '0', STR_PAD_LEFT);
     }
 }
