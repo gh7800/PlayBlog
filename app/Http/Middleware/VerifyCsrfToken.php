@@ -15,9 +15,9 @@ class VerifyCsrfToken extends Middleware
      * @var array
      */
     protected $except = [
-//        'api/api/login',
-//        '/login',
-//        'http://localhost:8000/api/login',
-//        'http://localhost:8000/api/login',
+        // Sanctum EnsureFrontendRequestsAreStateful 会对同源 SPA 请求自动启用 CSRF 校验，
+        // 线上前后端同域（www.wangshuai.dpdns.org）时 /api/* 会命中该校验导致 TokenMismatch；
+        // API 鉴权走 Bearer token，不依赖 cookie，故豁免。
+        'api/*',
     ];
 }

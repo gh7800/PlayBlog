@@ -381,45 +381,72 @@ class AiController extends ApiController
 
         $lines = [];
         foreach ($rows as $r) {
-            $snippet = $this->makeSnippet($r->text ?? '', $keywords, 250);
-            $lines[] = "文件《{$r->title}》(file_id={$r->file_id})内容片段：{$snippet}";
+            // 同一文件取多段不重叠片段，避免只命中目录而漏掉正文
+            $snippets = $this->makeSnippets($r->text ?? '', $keywords, 250, 3);
+            foreach ($snippets as $snippet) {
+                $lines[] = "文件《{$r->title}》(file_id={$r->file_id})内容片段：{$snippet}";
+            }
         }
         return "【文件内容检索】\n" . implode("\n", $lines);
     }
 
     /**
-     * 从全文中截取命中关键词附近的片段（前后各 $radius 字）。
-     * 找不到关键词（如仅文件名命中）时取开头片段兜底。
+     * 从全文中截取命中关键词附近的多个片段。
+     * 会把重叠或相邻的窗口合并，每个文件最多返回 $maxSnippets 段，
+     * 避免目录命中后漏掉正文，也避免一段过长的无关内容占满 token。
      */
-    protected function makeSnippet(string $text, array $keywords, int $radius = 250): string
+    protected function makeSnippets(string $text, array $keywords, int $radius = 250, int $maxSnippets = 3): array
     {
         $text = $text ?? '';
         if ($text === '') {
-            return '（空内容）';
+            return ['（空内容）'];
         }
 
-        $pos = false;
+        $len = mb_strlen($text);
+
+        // 1) 收集所有命中位置
+        $positions = [];
         foreach ($keywords as $k) {
-            $p = mb_strpos($text, $k);
-            if ($p !== false) {
-                $pos = $p;
-                break;
+            if ($k === '') {
+                continue;
+            }
+            $offset = 0;
+            while (($p = mb_strpos($text, $k, $offset)) !== false) {
+                $positions[] = $p;
+                $offset = $p + mb_strlen($k);
             }
         }
 
-        // 找不到关键词：取开头 radius*2 字
-        if ($pos === false) {
+        sort($positions);
+        $positions = array_values(array_unique($positions));
+
+        // 2) 找不到关键词：取开头兜底
+        if (empty($positions)) {
             $head = mb_substr($text, 0, $radius * 2);
-            return mb_strlen($text) > $radius * 2 ? $head . '…' : $head;
+            return [mb_strlen($text) > $radius * 2 ? $head . '…' : $head];
         }
 
-        // 命中：取 pos 前后各 radius 字
-        $start = max(0, $pos - $radius);
-        $len   = $radius * 2;
-        $snippet = mb_substr($text, $start, $len);
-        $prefix  = $start > 0 ? '…' : '';
-        $suffix  = mb_strlen($text) > $start + $len ? '…' : '';
-        return $prefix . $snippet . $suffix;
+        // 3) 合并重叠/相邻窗口
+        $windows = [];
+        foreach ($positions as $p) {
+            $start = max(0, $p - $radius);
+            $end   = min($len, $p + $radius);
+            if (empty($windows) || $start > $windows[count($windows) - 1]['end']) {
+                $windows[] = ['start' => $start, 'end' => $end];
+            } else {
+                $windows[count($windows) - 1]['end'] = max($windows[count($windows) - 1]['end'], $end);
+            }
+        }
+
+        // 4) 生成片段
+        $snippets = [];
+        foreach (array_slice($windows, 0, $maxSnippets) as $w) {
+            $s      = mb_substr($text, $w['start'], $w['end'] - $w['start']);
+            $prefix = $w['start'] > 0 ? '…' : '';
+            $suffix = $w['end'] < $len ? '…' : '';
+            $snippets[] = $prefix . $s . $suffix;
+        }
+        return $snippets;
     }
 
     /**
