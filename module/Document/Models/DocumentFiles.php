@@ -32,7 +32,7 @@ class DocumentFiles extends Model
         if($this->file_path == null){
             return null;
         }
-        // 如果库里有 file_path 字段就直接用
-        return config('app.url') . Storage::url($this->file_path);
+        // Storage::url() 已含完整域名前缀，无需再拼 config('app.url')
+        return Storage::disk('public')->url($this->file_path);
     }
 }

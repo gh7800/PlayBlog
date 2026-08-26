@@ -23,7 +23,7 @@ class FileUploadService
 
         $model = [
             'title' => $file->getClientOriginalName(),
-            'file_name' => $file->getClientMimeType(),
+            'file_name' => $file->getClientOriginalName(),
             'file_size'          => $file->getSize(),
             'file_path'          => $path,
             //'file_url'           => env('APP_URL').Storage::url($path),
