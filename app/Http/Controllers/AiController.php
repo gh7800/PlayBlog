@@ -351,7 +351,7 @@ class AiController extends ApiController
                         $params[] = '%' . $k . '%';
                     }
                 }
-                $sql = "SELECT * FROM `{$table}` WHERE (" . implode(' OR ', $wheres) . ") LIMIT 5";
+                $sql = "SELECT * FROM `{$table}` WHERE (" . implode(' OR ', $wheres) . ") LIMIT 15";
                 try {
                     $rows = $conn->select($sql, $params);
                 } catch (\Throwable $e) {
