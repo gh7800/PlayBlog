@@ -42,6 +42,14 @@ Route::post('/push', [PushController::class, 'sendPush']);
 // AI 助理：流式对话（SSE）。前端会带 Bearer token；如需强制登录可加 ->middleware('auth:sanctum')
 Route::post('/ai/chat', [AiController::class, 'chat']);
 
+// AI 助理：对话记录（需登录，按 user_uuid 隔离）
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/ai/conversations', [AiController::class, 'listConversations']);          // 我的对话列表（分页）
+    Route::post('/ai/conversations', [AiController::class, 'storeConversation']);         // 新建对话
+    Route::get('/ai/conversations/{id}', [AiController::class, 'showConversation']);      // 对话详情（回载）
+    Route::put('/ai/conversations/{id}', [AiController::class, 'updateConversation']);    // 更新对话
+});
+
 require __DIR__ . '/organization.php';
 
 //为组中所有路由的 URI 加上 admin 前缀

@@ -55,7 +55,8 @@
       "Bash(read -r server.php content)",
       "Bash(nslookup prod.staven630.com)",
       "Bash(nslookup crm.staven630.com)",
-      "Bash(ping -n 1 prod.staven630.com)"
+      "Bash(ping -n 1 prod.staven630.com)",
+      "Skill(claude-api)"
     ],
     "deny": [
       "Bash(git add *)",

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AiConversation;
 use GuzzleHttp\Client;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -500,5 +501,201 @@ class AiController extends ApiController
         }
 
         return array_values(array_unique(array_filter($keywords)));
+    }
+
+    /**
+     * 我的对话列表（分页）。
+     * GET /api/ai/conversations?page=1&per_page=20
+     * 返回：{success,data:[{id,title,last_message,message_count,updated_at}],paginator}
+     * 列表只取摘要字段，不 SELECT messages，避免大 JSON 拖慢分页。
+     */
+    public function listConversations()
+    {
+        $user = request()->user();
+        if (!$user) {
+            return $this->error('未登录');
+        }
+
+        $perPage = (int) request()->input('per_page', 20);
+        $perPage = min(max($perPage, 1), 50);
+
+        $rows = AiConversation::query()
+            ->where('user_uuid', $user->uuid)
+            ->orderByDesc('updated_at')
+            ->paginate($perPage, ['id', 'title', 'last_message', 'message_count', 'updated_at']);
+
+        $data = $rows->map(function ($c) {
+            return [
+                'id'            => $c->id,
+                'title'         => $c->title,
+                'last_message'  => $c->last_message,
+                'message_count' => $c->message_count,
+                'updated_at'    => $c->updated_at ? $c->updated_at->format('Y-m-d H:i:s') : null,
+            ];
+        });
+
+        return $this->successPaginator($data, $rows);
+    }
+
+    /**
+     * 新建对话（首轮问答结束后由前端调用）。
+     * POST /api/ai/conversations  body: { title?, messages:[{role,content,chart?,action?}] }
+     * 返回新对话 id，前端据此做后续更新。
+     */
+    public function storeConversation()
+    {
+        $user = request()->user();
+        if (!$user) {
+            return $this->error('未登录');
+        }
+
+        $payload = request()->validate([
+            'title'             => 'nullable|string|max:255',
+            'messages'          => 'required|array|min:1',
+            'messages.*.role'    => 'required|in:user,assistant',
+            'messages.*.content' => 'nullable|string',
+        ], [], [
+            'messages' => '对话内容',
+        ]);
+
+        $messages = $this->normalizeMessages($payload['messages']);
+        if (empty($messages)) {
+            return $this->error('对话内容为空');
+        }
+        $title = !empty($payload['title']) ? $payload['title'] : $this->firstUserText($messages);
+        $last  = $this->lastContent($messages);
+
+        $conv = AiConversation::create([
+            'user_uuid'     => $user->uuid,
+            'title'         => mb_substr($title, 0, 200),
+            'messages'      => $messages,
+            'message_count' => count($messages),
+            'last_message'  => mb_substr($last, 0, 500),
+        ]);
+
+        return $this->success([
+            'id'            => $conv->id,
+            'title'         => $conv->title,
+            'message_count' => $conv->message_count,
+            'updated_at'    => $conv->updated_at->format('Y-m-d H:i:s'),
+        ], '已保存对话');
+    }
+
+    /**
+     * 对话详情（点击历史项时由前端调用，回载整段对话）。
+     * GET /api/ai/conversations/{id}
+     */
+    public function showConversation($id)
+    {
+        $user = request()->user();
+        if (!$user) {
+            return $this->error('未登录');
+        }
+
+        $conv = AiConversation::where('user_uuid', $user->uuid)->find($id);
+        if (!$conv) {
+            return $this->error('对话不存在');
+        }
+
+        return $this->success([
+            'id'            => $conv->id,
+            'title'         => $conv->title,
+            'messages'      => $conv->messages ?: [],
+            'message_count' => $conv->message_count,
+            'updated_at'    => $conv->updated_at->format('Y-m-d H:i:s'),
+        ]);
+    }
+
+    /**
+     * 更新对话（后续每轮问答结束后由前端调用，全量覆盖 messages）。
+     * PUT /api/ai/conversations/{id}  body: { title?, messages:[...] }
+     */
+    public function updateConversation($id)
+    {
+        $user = request()->user();
+        if (!$user) {
+            return $this->error('未登录');
+        }
+
+        $conv = AiConversation::where('user_uuid', $user->uuid)->find($id);
+        if (!$conv) {
+            return $this->error('对话不存在');
+        }
+
+        $payload = request()->validate([
+            'title'             => 'nullable|string|max:255',
+            'messages'          => 'required|array|min:1',
+            'messages.*.role'    => 'required|in:user,assistant',
+            'messages.*.content' => 'nullable|string',
+        ]);
+
+        $messages = $this->normalizeMessages($payload['messages']);
+        if (empty($messages)) {
+            return $this->error('对话内容为空');
+        }
+
+        $conv->messages      = $messages;
+        $conv->message_count = count($messages);
+        $conv->last_message  = mb_substr($this->lastContent($messages), 0, 500);
+        if (!empty($payload['title'])) {
+            $conv->title = mb_substr($payload['title'], 0, 200);
+        }
+        $conv->save();
+
+        return $this->success([
+            'id'            => $conv->id,
+            'title'         => $conv->title,
+            'message_count' => $conv->message_count,
+            'updated_at'    => $conv->updated_at->format('Y-m-d H:i:s'),
+        ], '已更新对话');
+    }
+
+    /**
+     * 把前端传来的原始消息数组清洗为可持久化结构。
+     * 仅保留 role/content，并可选保留图表配置 chart 与动作卡 action（只存 key+label）。
+     */
+    protected function normalizeMessages(array $raw): array
+    {
+        $out = [];
+        foreach ($raw as $m) {
+            if (!is_array($m)) {
+                continue;
+            }
+            $role = $m['role'] ?? '';
+            if (!in_array($role, ['user', 'assistant'], true)) {
+                continue;
+            }
+            $item = [
+                'role'    => $role,
+                'content' => (string) ($m['content'] ?? ''),
+            ];
+            if (isset($m['chart']) && is_array($m['chart'])) {
+                $item['chart'] = $m['chart'];
+            }
+            if (isset($m['action']) && is_array($m['action']) && !empty($m['action']['key'])) {
+                $item['action'] = [
+                    'key'   => $m['action']['key'],
+                    'label' => $m['action']['label'] ?? '',
+                ];
+            }
+            $out[] = $item;
+        }
+        return $out;
+    }
+
+    protected function firstUserText(array $messages): string
+    {
+        foreach ($messages as $m) {
+            if ($m['role'] === 'user' && $m['content'] !== '') {
+                return $m['content'];
+            }
+        }
+        return '新对话';
+    }
+
+    protected function lastContent(array $messages): string
+    {
+        $last = end($messages);
+        return ($last && !empty($last['content'])) ? $last['content'] : '';
     }
 }
