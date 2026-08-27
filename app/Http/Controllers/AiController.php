@@ -81,13 +81,42 @@ class AiController extends ApiController
         $baseUrl = rtrim(env('DEEPSEEK_BASE_URL', 'https://api.deepseek.com/v1'), '/');
         $model   = env('DEEPSEEK_MODEL', 'deepseek-v4-flash');
 
+        // 2.1) 多轮上下文：前端传 conversation_id 时，从已存对话取历史消息拼回模型。
+        //      - 只保留 role+content 文本，剔除 chart/action 等前端专用结构
+        //      - 仅取最近 20 条，避免请求体随对话变长无限膨胀、也省 token
+        //      - 取不到（新对话 / 无 id / 记录为空 / 解析失败）则静默降级为无状态，不影响当前问答
+        $history = [];
+        if ($cid = trim((string) request()->input('conversation_id', ''))) {
+            try {
+                $conv = AiConversation::find($cid);
+                if ($conv && !empty($conv->messages) && is_array($conv->messages)) {
+                    foreach (array_slice($conv->messages, -20) as $m) {
+                        if (!is_array($m)
+                            || !isset($m['role'])
+                            || !in_array($m['role'], ['user', 'assistant'], true)
+                        ) {
+                            continue;
+                        }
+                        $history[] = [
+                            'role'    => $m['role'],
+                            'content' => (string) ($m['content'] ?? ''),
+                        ];
+                    }
+                }
+            } catch (\Throwable $e) {
+                \Log::error('AiController 载入对话历史失败: ' . $e->getMessage());
+                $history = [];
+            }
+        }
+
         $payload = [
             'model'    => $model,
             'stream'   => true,
-            'messages' => [
-                ['role' => 'system', 'content' => $system],
-                ['role' => 'user',   'content' => $question],
-            ],
+            'messages' => array_merge(
+                [['role' => 'system', 'content' => $system]],
+                $history,
+                [['role' => 'user', 'content' => $question]]
+            ),
         ];
 
         $headers = [
